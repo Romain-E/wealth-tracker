@@ -1,0 +1,16 @@
+# Normalise to LF in the repository. Without this, a Windows checkout commits
+# mvnw with CRLF and every Linux CI runner fails with a cryptic
+# "bad interpreter: /bin/sh^M" long before it reaches a single test.
+* text=auto eol=lf
+
+# Windows-only launchers genuinely need CRLF.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Executable shell entry points must never be CRLF.
+mvnw text eol=lf
+*.sh text eol=lf
+
+*.jar binary
+*.png binary
+*.woff2 binary
