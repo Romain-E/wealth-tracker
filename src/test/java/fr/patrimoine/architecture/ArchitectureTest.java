@@ -9,6 +9,7 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
+import jakarta.persistence.Entity;
 
 /**
  * The architecture, enforced by the build rather than described in a README.
@@ -178,4 +179,22 @@ class ArchitectureTest {
                     .resideInAPackage("..application.service..")
                     .because("the API layer depends on port.in interfaces, not on implementations")
                     .allowEmptyShould(true);
+
+    /**
+     * JPA entities are a storage detail of the persistence adapter. Package-private visibility
+     * already keeps them there; this rule stops someone widening it to make a compile error go away
+     * in a place that should never have needed an entity.
+     */
+    @ArchTest
+    static final ArchRule entities_stay_inside_the_persistence_adapter =
+            classes()
+                    .that()
+                    .areAnnotatedWith(Entity.class)
+                    .should()
+                    .resideInAPackage("..infrastructure.persistence..")
+                    .andShould()
+                    .notBePublic()
+                    .because(
+                            "the rest of the application works with domain aggregates, never with"
+                                    + " rows");
 }

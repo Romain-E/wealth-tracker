@@ -1,0 +1,6 @@
+# Developer defaults for a Postgres running on this machine. Never activated in a cluster.
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/patrimoine
+    username: patrimoine
+    password: patrimoine

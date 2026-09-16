@@ -1,0 +1,5 @@
+# Adds the demo portfolio on top of the schema. It lives in its own Flyway location, so an
+# environment that does not activate this profile cannot receive demo data, whatever its version.
+spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/seed

@@ -1,0 +1,25 @@
+# Base configuration, shared by every environment.
+#
+# Database credentials have no defaults on purpose: a pod missing its secret should fail to start,
+# not quietly try localhost. Developer defaults live in the `local` profile.
+spring:
+  application:
+    name: patrimoine-api
+  profiles:
+    group:
+      # A developer machine: localhost database plus the demo portfolio.
+      local: demo
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      # Flyway owns the schema. Hibernate only checks that its mappings agree with it, so an
+      # entity and a migration that drift apart fail at startup instead of at the first query.
+      ddl-auto: validate
+    # A session held open for the whole HTTP request lets serialisation trigger lazy loading,
+    # which hides N+1 queries and keeps a connection checked out while JSON is written.
+    open-in-view: false
+  flyway:
+    locations: classpath:db/migration
