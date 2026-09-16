@@ -1,5 +1,6 @@
 package fr.patrimoine.architecture;
 
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noFields;
 import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
@@ -109,4 +110,72 @@ class ArchitectureTest {
                     .haveFullyQualifiedName("java.text.SimpleDateFormat")
                     .because(
                             "java.time exists, is immutable, and is not silently timezone-dependent");
+
+    /**
+     * The application layer is allowed exactly two framework concessions -- the {@code @Service}
+     * stereotype and declarative transactions -- because transaction demarcation genuinely is a
+     * use-case concern. This rule draws that line so the concession cannot quietly widen: no web
+     * layer, no Spring Data, no JPA, no Jackson. The day someone reaches for {@code @GetMapping} or
+     * an {@code EntityManager} in a use case, the build says no.
+     */
+    @ArchTest
+    static final ArchRule application_layer_knows_nothing_of_web_or_persistence =
+            noClasses()
+                    .that()
+                    .resideInAPackage("..application..")
+                    .should()
+                    .dependOnClassesThat()
+                    .resideInAnyPackage(
+                            "org.springframework.web..",
+                            "org.springframework.http..",
+                            "org.springframework.data..",
+                            "jakarta.persistence..",
+                            "jakarta.servlet..",
+                            "com.fasterxml.jackson..")
+                    .because(
+                            "use cases orchestrate the domain; they must not know how they are called"
+                                    + " or where data is stored");
+
+    /** A driven port is a contract, so it can only be an interface. */
+    @ArchTest
+    static final ArchRule driven_ports_are_interfaces =
+            classes()
+                    .that()
+                    .resideInAPackage("..application.port.out..")
+                    .should()
+                    .beInterfaces()
+                    .because(
+                            "an out-port declares what the application needs, never how it is met");
+
+    /** Same for the driving side: a use case is an interface the API layer depends on. */
+    @ArchTest
+    static final ArchRule use_cases_are_interfaces =
+            classes()
+                    .that()
+                    .haveSimpleNameEndingWith("UseCase")
+                    .should()
+                    .beInterfaces()
+                    .because(
+                            "controllers depend on the use case, not on the service, so they can be"
+                                    + " tested against a stub");
+
+    /**
+     * Controllers go through a use-case interface, never the service behind it. Without this,
+     * "hexagonal" decays into a package naming convention the first time someone autowires a
+     * concrete service into a controller.
+     *
+     * <p>{@code allowEmptyShould} because the API layer does not exist yet. Like the optional
+     * layers above, the rule is armed now so it bites on the first controller instead of relying on
+     * someone remembering to add it then.
+     */
+    @ArchTest
+    static final ArchRule services_are_reached_through_their_ports =
+            noClasses()
+                    .that()
+                    .resideInAPackage("..api..")
+                    .should()
+                    .dependOnClassesThat()
+                    .resideInAPackage("..application.service..")
+                    .because("the API layer depends on port.in interfaces, not on implementations")
+                    .allowEmptyShould(true);
 }

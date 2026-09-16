@@ -21,7 +21,9 @@ import org.junit.jupiter.api.Test;
 class PerformanceCalculatorTest {
 
     private static final AccountId ACCOUNT = AccountId.newId();
+    private static final AccountId FLAT = AccountId.newId();
     private static final LocalDate TODAY = LocalDate.of(2025, 1, 1);
+    private static final LocalDate WINDOW_START = LocalDate.of(2024, 1, 1);
     private static final InstrumentId WORLD = InstrumentId.of("IE00B4L5Y983");
 
     private final PerformanceCalculator calculator = new PerformanceCalculator();
@@ -154,8 +156,65 @@ class PerformanceCalculatorTest {
         assertThat(series.get(1).value()).isEqualTo(Money.euros("11500.00"));
     }
 
+    @Test
+    @DisplayName("consolidation carries each account's last value forward instead of dropping it")
+    void carriesSparseSnapshotsForward() {
+        List<Valuation> valuations =
+                List.of(
+                        valuation(ACCOUNT, "2024-01-01", "10000.00"),
+                        valuation(FLAT, "2024-01-01", "250000.00"),
+                        // The PEA is marked again in March; the flat is not re-appraised.
+                        valuation(ACCOUNT, "2024-03-01", "11000.00"));
+
+        List<PerformancePoint> series = calculator.aggregateSeries(valuations, WINDOW_START);
+
+        // Summing only same-day rows would show 11 000 in March: a 96% crash that never happened.
+        assertThat(series)
+                .containsExactly(
+                        point("2024-01-01", "260000.00"), point("2024-03-01", "261000.00"));
+    }
+
+    @Test
+    @DisplayName("an account adds nothing to the curve before its first snapshot")
+    void growsAsAccountsAreOpened() {
+        List<Valuation> valuations =
+                List.of(
+                        valuation(ACCOUNT, "2024-01-01", "10000.00"),
+                        valuation(FLAT, "2024-06-01", "250000.00"));
+
+        assertThat(calculator.aggregateSeries(valuations, WINDOW_START))
+                .containsExactly(point("2024-01-01", "10000.00"), point("2024-06-01", "260000.00"));
+    }
+
+    @Test
+    @DisplayName("a snapshot older than the window anchors the curve on the window's first day")
+    void anchorsTheWindowOnEarlierSnapshots() {
+        List<Valuation> valuations =
+                List.of(
+                        // Appraised the year before and not since: a starting balance, not a point.
+                        valuation(FLAT, "2023-06-01", "250000.00"),
+                        valuation(ACCOUNT, "2024-03-01", "10000.00"));
+
+        assertThat(calculator.aggregateSeries(valuations, WINDOW_START))
+                .containsExactly(
+                        point("2024-01-01", "250000.00"), point("2024-03-01", "260000.00"));
+    }
+
+    @Test
+    void consolidatesNothingIntoAnEmptyCurve() {
+        assertThat(calculator.aggregateSeries(List.of(), WINDOW_START)).isEmpty();
+    }
+
     private static Valuation valuation(String date, String amount) {
+        return valuation(ACCOUNT, date, amount);
+    }
+
+    private static Valuation valuation(AccountId account, String date, String amount) {
         return new Valuation(
-                ACCOUNT, LocalDate.parse(date), Money.euros(amount), ValuationSource.COMPUTED);
+                account, LocalDate.parse(date), Money.euros(amount), ValuationSource.COMPUTED);
+    }
+
+    private static PerformancePoint point(String date, String amount) {
+        return new PerformancePoint(LocalDate.parse(date), Money.euros(amount));
     }
 }
