@@ -1,7 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <FindBugsFilter>
+  <!-- Records that hold a List. Every one of them copies it into an immutable list in its
+       compact constructor, and hands that same immutable list back; SpotBugs cannot see through
+       List.copyOf and reports the accessor as exposing internal state anyway. -->
   <Match>
     <Package name="~fr\.patrimoine\.domain.*"/>
+    <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+  </Match>
+  <Match>
+    <Package name="~fr\.patrimoine\.api\.dto.*"/>
     <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
   </Match>
   <Match>

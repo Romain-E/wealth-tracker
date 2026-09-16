@@ -21,5 +21,22 @@ spring:
     # A session held open for the whole HTTP request lets serialisation trigger lazy loading,
     # which hides N+1 queries and keeps a connection checked out while JSON is written.
     open-in-view: false
+  jackson:
+    # Plain notation: a large portfolio total must not reach a client as 1.7E+5.
+    generator:
+      write-bigdecimal-as-plain: true
   flyway:
     locations: classpath:db/migration
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+
+logging:
+  pattern:
+    # Every line of a request carries its correlation id, which is what makes a reported
+    # error findable. Empty for work that belongs to no request, such as startup.
+    level: "%5p [%X{correlationId:-}]"
