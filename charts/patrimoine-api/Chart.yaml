@@ -3,7 +3,7 @@ name: patrimoine-api
 description: Wealth tracking API for French savings envelopes (Livret A, PEA, assurance vie...)
 type: application
 # The chart's own version: bump it whenever a template or a default changes.
-version: 0.1.0
+version: 0.1.1
 # The application version deployed by default, used as the image tag unless one is given.
 appVersion: "0.1.0"
 kubeVersion: ">=1.27.0-0"

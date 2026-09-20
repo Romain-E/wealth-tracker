@@ -1,6 +1,11 @@
 {{- /*
 `helm test <release>`: the API answers through its Service and, when the web application is
 deployed, the page is served and nginx forwards /api to the API. Every container must succeed.
+
+The pod is deleted before the next run rather than on success, so that it is still there to be
+read afterwards: `helm test --logs` fetches the logs once the pod has finished, and a
+`hook-succeeded` policy would delete it first and fail on a green test. What is left behind is
+one completed pod, which the following run removes.
 */ -}}
 apiVersion: v1
 kind: Pod
@@ -11,7 +16,7 @@ metadata:
     app.kubernetes.io/component: test
   annotations:
     "helm.sh/hook": test
-    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    "helm.sh/hook-delete-policy": before-hook-creation
 spec:
   restartPolicy: Never
   automountServiceAccountToken: false
