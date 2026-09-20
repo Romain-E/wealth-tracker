@@ -2,7 +2,16 @@
 #
 # Database credentials have no defaults on purpose: a pod missing its secret should fail to start,
 # not quietly try localhost. Developer defaults live in the `local` profile.
+server:
+  # On a rolling update Kubernetes stops the old pod while it may still be answering. Graceful
+  # shutdown lets requests in flight finish instead of cutting them off mid-response.
+  shutdown: graceful
+
 spring:
+  lifecycle:
+    # How long in-flight requests get. Must stay below the pod's terminationGracePeriodSeconds
+    # (30s by default), or Kubernetes kills the process before Spring has finished.
+    timeout-per-shutdown-phase: 20s
   application:
     name: patrimoine-api
   profiles:
@@ -102,3 +111,46 @@ resilience4j:
         base-config: default
       yahoo:
         base-config: default
+
+management:
+  server:
+    # A separate port for health and build details. The Kubernetes Service and the Ingress only
+    # route 8080, so none of this is reachable from the internet, while the kubelet can still
+    # probe it inside the cluster.
+    port: 8081
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      # Safe only because of the separate, cluster-internal port above.
+      show-details: always
+      status:
+        # DEGRADED sits between UP and DOWN: the application is serving, with stale or
+        # uncached prices. It answers 200, because nothing should restart or unroute it.
+        order: DOWN, OUT_OF_SERVICE, DEGRADED, UP, UNKNOWN
+        http-mapping:
+          DEGRADED: 200
+      group:
+        # "Should this container be restarted?" Only for a broken application. A database
+        # outage is not fixed by a restart, and including it would make every pod restart
+        # in a loop until the database comes back.
+        liveness:
+          include: livenessState
+        # "Should this pod receive traffic?" Not without its database. Redis and the price
+        # sources are left out on purpose: the application copes without them, and failing
+        # readiness would pull every pod out of rotation at once, turning a degraded
+        # dependency into a full outage.
+        readiness:
+          include: readinessState, db
+  health:
+    # Redis is reported by the quotes indicator, as the optional dependency it is. The
+    # built-in indicator would mark the whole application DOWN when the cache is.
+    redis:
+      enabled: false
+  info:
+    java:
+      enabled: true

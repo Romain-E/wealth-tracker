@@ -23,7 +23,6 @@
 
     <springdoc.version>2.9.1</springdoc.version>
     <resilience4j.version>2.4.0</resilience4j.version>
-    <logstash-encoder.version>8.1</logstash-encoder.version>
     <archunit.version>1.5.0</archunit.version>
     <wiremock.version>3.13.2</wiremock.version>
 
@@ -98,11 +97,8 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-actuator</artifactId>
     </dependency>
-    <dependency>
-      <groupId>net.logstash.logback</groupId>
-      <artifactId>logstash-logback-encoder</artifactId>
-      <version>${logstash-encoder.version}</version>
-    </dependency>
+    <!-- JSON logs need no extra library: Spring Boot writes the Logstash format itself
+         (logging.structured.format.console, see application-json-logs.yml). -->
 
     <!-- ===================== test ===================== -->
     <dependency>
@@ -144,6 +140,25 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+        <executions>
+          <!-- Version, artifact and build time, served by /actuator/info. -->
+          <execution>
+            <goals><goal>build-info</goal></goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <!-- The exact commit that was built, also served by /actuator/info: "which version
+           is running in that pod?" gets an answer without reading image tags. -->
+      <plugin>
+        <groupId>io.github.git-commit-id</groupId>
+        <artifactId>git-commit-id-maven-plugin</artifactId>
+        <configuration>
+          <!-- A source archive or a Docker build context may have no .git directory;
+               the build must still succeed, just without commit details. -->
+          <failOnNoGitDirectory>false</failOnNoGitDirectory>
+          <failOnUnableToExtractRepoInfo>false</failOnUnableToExtractRepoInfo>
+        </configuration>
       </plugin>
 
       <!-- Unit tests: *Test. Fast, no Docker, run on every build. -->

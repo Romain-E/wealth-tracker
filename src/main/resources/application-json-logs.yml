@@ -1,0 +1,7 @@
+# One JSON object per log line, for a log collector (Loki, Elasticsearch...) to index.
+# Activated in containers; a developer keeps readable text logs by not enabling it.
+# Every MDC entry becomes a field, so each line of a request carries its correlationId.
+logging:
+  structured:
+    format:
+      console: logstash
