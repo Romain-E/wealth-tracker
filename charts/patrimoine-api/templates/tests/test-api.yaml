@@ -1,18 +1,31 @@
 {{- /*
 `helm test <release>`: the API answers through its Service and, when the web application is
-deployed, the page is served and nginx forwards /api to the API. Every container must succeed.
+deployed, the page is served and nginx forwards /api to the API. Every check must succeed.
 
-The pod is deleted before the next run rather than on success, so that it is still there to be
-read afterwards: `helm test --logs` fetches the logs once the pod has finished, and a
-`hook-succeeded` policy would delete it first and fail on a green test. What is left behind is
-one completed pod, which the following run removes.
+One pod per check, rather than one pod with a container per check. `helm test --logs` reads a
+pod's logs without naming a container, and the Kubernetes API refuses that as soon as a pod holds
+more than one, so a green test would fail the command. Separate pods also make helm's own output
+name the check that failed.
+
+They are deleted before the next run rather than on success, so that they are still there to be
+read afterwards: --logs fetches the logs once a pod has finished, and a `hook-succeeded` policy
+would delete it first. What is left behind is one completed pod per check, which the following
+run removes.
 */ -}}
+{{- $fullname := include "patrimoine.fullname" . -}}
+{{- $checks := dict "api" (printf "http://%s:%v/api/v1/portfolio" $fullname .Values.service.port) -}}
+{{- if .Values.web.enabled -}}
+{{- $_ := set $checks "web-page" (printf "http://%s-web/" $fullname) -}}
+{{- $_ := set $checks "web-api-proxy" (printf "http://%s-web/api/v1/portfolio" $fullname) -}}
+{{- end -}}
+{{- range $name, $url := $checks }}
+---
 apiVersion: v1
 kind: Pod
 metadata:
-  name: {{ include "patrimoine.fullname" . }}-test-api
+  name: {{ $fullname }}-test-{{ $name }}
   labels:
-    {{- include "patrimoine.labels" . | nindent 4 }}
+    {{- include "patrimoine.labels" $ | nindent 4 }}
     app.kubernetes.io/component: test
   annotations:
     "helm.sh/hook": test
@@ -26,33 +39,14 @@ spec:
     seccompProfile:
       type: RuntimeDefault
   containers:
-    - name: portfolio
+    # The body goes to stdout rather than /dev/null: with one container per pod, `helm test
+    # --logs` can print what the API actually answered, which is the point of running it.
+    - name: check
       image: busybox:1.37
-      command:
-        - wget
-        - -q
-        - -O
-        - "-"
-        - "http://{{ include "patrimoine.fullname" . }}:{{ .Values.service.port }}/api/v1/portfolio"
+      command: ["wget", "-q", "-O", "-", {{ $url | quote }}]
       securityContext:
         allowPrivilegeEscalation: false
         readOnlyRootFilesystem: true
         capabilities:
           drop: ["ALL"]
-    {{- if .Values.web.enabled }}
-    {{- range $name, $path := dict "web-page" "/" "web-api-proxy" "/api/v1/portfolio" }}
-    - name: {{ $name }}
-      image: busybox:1.37
-      command:
-        - wget
-        - -q
-        - -O
-        - /dev/null
-        - "http://{{ include "patrimoine.fullname" $ }}-web{{ $path }}"
-      securityContext:
-        allowPrivilegeEscalation: false
-        readOnlyRootFilesystem: true
-        capabilities:
-          drop: ["ALL"]
-    {{- end }}
-    {{- end }}
+{{- end }}
