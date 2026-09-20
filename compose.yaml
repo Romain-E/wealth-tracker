@@ -1,0 +1,101 @@
+# The whole application on one machine: `docker compose up --build`.
+#
+#   Application      http://localhost:3000
+#   API              http://localhost:8080/api/v1/portfolio
+#   Documentation    http://localhost:8080/swagger-ui.html
+#   Health           http://localhost:8081/actuator/health
+#
+# Starts with the demo portfolio. A host port already in use can be moved with WEB_PORT, API_PORT
+# or MANAGEMENT_PORT.
+#
+# The database and the cache publish no port: only the API talks to them, over the Compose network,
+# so a PostgreSQL or Redis already running on this machine is no obstacle. To inspect the data:
+#
+#   docker compose exec postgres psql -U patrimoine
+#
+# The credentials below are for this local stack only. Real ones come from a Kubernetes Secret.
+
+name: patrimoine
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: patrimoine
+      POSTGRES_USER: patrimoine
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-patrimoine}
+    volumes:
+      # Named volume: the data survives `docker compose down`, and goes with `down -v`.
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U patrimoine -d patrimoine"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    # A cache, not a store: nothing is written to disk, memory is capped, and the least recently
+    # used prices are evicted when the cap is reached rather than refusing new ones.
+    command: >
+      redis-server --save "" --appendonly no
+      --maxmemory 64mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    image: patrimoine-api:local
+    depends_on:
+      # Flyway migrates at startup, so the database has to accept connections first.
+      postgres:
+        condition: service_healthy
+      # The application copes without Redis; waiting for it only avoids a noisy first minute.
+      redis:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-demo}
+      DB_URL: jdbc:postgresql://postgres:5432/patrimoine
+      DB_USERNAME: patrimoine
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-patrimoine}
+      SPRING_DATA_REDIS_HOST: redis
+      COINGECKO_API_KEY: ${COINGECKO_API_KEY:-}
+    ports:
+      - "${API_PORT:-8080}:8080"
+      - "127.0.0.1:${MANAGEMENT_PORT:-8081}:8081"
+    deploy:
+      resources:
+        limits:
+          # The JVM sizes its heap from this limit (MaxRAMPercentage in the Dockerfile).
+          memory: 768m
+    healthcheck:
+      # The same readiness probe Kubernetes uses. wget ships with the Alpine base image.
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8081/actuator/health/readiness"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 60s
+
+  web:
+    build: ./web
+    image: patrimoine-web:local
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      # nginx forwards /api here, so the browser only ever talks to one origin.
+      API_UPSTREAM: http://api:8080
+    ports:
+      - "${WEB_PORT:-3000}:8080"
+    healthcheck:
+      # 127.0.0.1 rather than localhost: nginx listens on IPv4, and localhost may resolve to ::1.
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  postgres-data:

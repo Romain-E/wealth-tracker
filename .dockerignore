@@ -1,0 +1,19 @@
+# The build context is what `docker build` uploads. Keep it to what the build stage reads:
+# the wrapper, the pom, the sources, and .git (bind-mounted for the commit id in build info).
+
+# Build output from the host: the image compiles its own, and a stale jar must never leak in.
+target/
+
+# Not part of the API image.
+web/
+charts/
+.github/
+config/
+
+# Editors and local secrets.
+.idea/
+.vscode/
+*.iml
+.env
+.env.*
+**/node_modules/
