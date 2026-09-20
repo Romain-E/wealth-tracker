@@ -1,0 +1,142 @@
+# Defaults describe a production-like installation: PostgreSQL and Redis live outside the chart
+# (a managed service or an operator), and credentials come from a Secret that Helm never sees.
+# values-demo.yaml turns this into a self-contained demo for kind or minikube.
+
+# Two replicas, so a node drain or a rolling update never leaves nobody serving.
+replicaCount: 2
+
+image:
+  # Published by CI to the GitHub Container Registry.
+  repository: ghcr.io/romain-e/patrimoine-api
+  # Defaults to the chart's appVersion.
+  tag: ""
+  # When set, wins over the tag. A digest cannot be re-pointed, so what was tested is what runs.
+  digest: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  # Generated from the release name when empty.
+  name: ""
+  annotations: {}
+
+podAnnotations: {}
+podLabels: {}
+
+# Spring profiles for every environment. json-logs writes one JSON object per line, which is what
+# a log collector indexes; the correlation id arrives as a field.
+springProfiles:
+  - json-logs
+
+database:
+  # JDBC URL of the external PostgreSQL. Ignored when demo.postgresql.enabled is true.
+  url: ""
+  # Name of a Secret holding `username` and `password`. The recommended way: create it outside
+  # Helm (External Secrets, Sealed Secrets, the cloud provider's secret store), so no credential
+  # is ever written in a values file or stored in the release history.
+  existingSecret: ""
+  # Only used when existingSecret is empty, in which case the chart creates the Secret.
+  username: ""
+  password: ""
+
+redis:
+  # Host of the price cache. Ignored when demo.redis.enabled is true. The application works
+  # without it, only fetching prices more often.
+  host: ""
+  port: 6379
+
+quotes:
+  # Kill switch for calls to price providers; see patrimoine.quotes.live-prices.
+  livePrices: true
+  coingecko:
+    # Optional Secret with an `api-key` entry, for CoinGecko's higher rate limit.
+    existingSecret: ""
+
+service:
+  type: ClusterIP
+  # Only the API port. The management port (health, build info) is deliberately not part of the
+  # Service: the kubelet probes the pod directly, and nothing else needs to reach it.
+  port: 80
+
+# The web application, served by nginx. When enabled, the Ingress sends /api to the API and
+# everything else here.
+web:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: ghcr.io/romain-e/patrimoine-web
+    # Defaults to the chart's appVersion, like the API: both images are released together.
+    tag: ""
+    digest: ""
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 50m
+      memory: 32Mi
+    limits:
+      memory: 64Mi
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: patrimoine.example.com
+  tls:
+    enabled: false
+    # Secret holding the certificate, typically issued by cert-manager.
+    secretName: ""
+
+resources:
+  requests:
+    cpu: 250m
+    # Request equals limit for memory: the pod gets what it may use, so the node cannot be
+    # overcommitted into killing it later. The JVM sizes its heap from this limit.
+    memory: 768Mi
+  limits:
+    # No CPU limit, on purpose. A limit throttles the JVM even when the node has idle cores,
+    # which shows up as slow startups and latency spikes; the request already guarantees a share.
+    memory: 768Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+
+# Keeps at least one pod running through voluntary disruptions such as node drains.
+# Only rendered when more than one replica can exist, otherwise it would block every drain.
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Shutdown sequence. Kubernetes removes the pod from the Service while it runs preStop; the pause
+# lets that removal reach every node before Spring stops accepting requests, then Spring's own
+# graceful shutdown (20s) lets requests in flight finish. Both must fit in the grace period.
+preStopSleepSeconds: 10
+terminationGracePeriodSeconds: 45
+
+# Prefer spreading replicas over different nodes, so losing one node does not lose them all.
+spreadAcrossNodes: true
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Everything below is for demos only: an in-cluster database and cache with no backups, no
+# replication and a password in a values file.
+demo:
+  # Loads the demo portfolio (Spring profile `demo`).
+  seedData: false
+  postgresql:
+    enabled: false
+    image: postgres:17-alpine
+    database: patrimoine
+    storage: 1Gi
+  redis:
+    enabled: false
+    image: redis:7-alpine

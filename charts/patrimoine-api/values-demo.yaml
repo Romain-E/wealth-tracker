@@ -1,0 +1,39 @@
+# A self-contained demo on a local cluster (kind, minikube), with the image built locally:
+#
+#   kind create cluster --name patrimoine
+#   docker build -t patrimoine-api:local .
+#   docker build -t patrimoine-web:local web
+#   kind load docker-image patrimoine-api:local patrimoine-web:local --name patrimoine
+#   helm install patrimoine-api charts/patrimoine-api -f charts/patrimoine-api/values-demo.yaml
+#   helm test patrimoine-api
+#
+# A release named after the chart keeps resource names short: patrimoine-api, not
+# patrimoine-patrimoine-api.
+#
+# Not for anything real: the database password below is in plain text in this file.
+
+replicaCount: 1
+
+image:
+  repository: patrimoine-api
+  tag: local
+  # The image is loaded into the cluster, never pulled from a registry.
+  pullPolicy: Never
+
+web:
+  replicaCount: 1
+  image:
+    repository: patrimoine-web
+    tag: local
+    pullPolicy: Never
+
+database:
+  username: patrimoine
+  password: patrimoine
+
+demo:
+  seedData: true
+  postgresql:
+    enabled: true
+  redis:
+    enabled: true

@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "patrimoine.fullname" . }}
+  labels:
+    {{- include "patrimoine.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "patrimoine.selectorLabels" . | nindent 4 }}
+  ports:
+    # The API only. The management port stays off the Service: health details and build
+    # information are for the kubelet, which probes the pod directly.
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP

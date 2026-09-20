@@ -42,6 +42,10 @@ spring:
       connect-timeout: 500ms
   flyway:
     locations: classpath:db/migration
+    # Migrations run first at start-up, so this is where a database that is not up yet shows. Six
+    # retries with back-off (about a minute) wait out a database starting alongside the application
+    # instead of crashing and being restarted. The startup probe allows three minutes.
+    connect-retries: 6
 
 springdoc:
   # Successful responses are JSON; errors are declared as problem+json by OpenApiConfiguration.

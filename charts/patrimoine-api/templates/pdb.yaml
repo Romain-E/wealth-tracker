@@ -1,0 +1,34 @@
+{{- /*
+Only when more than one pod can exist. With a single replica, "keep one available" would forbid
+evicting it, and every node drain would hang on this pod.
+*/ -}}
+{{- if and .Values.podDisruptionBudget.enabled (or .Values.autoscaling.enabled (gt (int .Values.replicaCount) 1)) }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "patrimoine.fullname" . }}
+  labels:
+    {{- include "patrimoine.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  selector:
+    matchLabels:
+      {{- include "patrimoine.selectorLabels" . | nindent 6 }}
+{{- end }}
+{{- if and .Values.podDisruptionBudget.enabled .Values.web.enabled (gt (int .Values.web.replicaCount) 1) }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "patrimoine.fullname" . }}-web
+  labels:
+    {{- include "patrimoine.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      {{- include "patrimoine.baseSelectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: web
+{{- end }}

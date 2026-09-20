@@ -1,0 +1,37 @@
+{{ include "patrimoine.fullname" . }} is deployed in namespace {{ .Release.Namespace }}.
+
+{{- if .Values.ingress.enabled }}
+
+The application is published at http{{ if .Values.ingress.tls.enabled }}s{{ end }}://{{ .Values.ingress.host }}/
+{{- else }}
+{{- if .Values.web.enabled }}
+
+Open the application from this machine:
+
+  kubectl port-forward --namespace {{ .Release.Namespace }} service/{{ include "patrimoine.fullname" . }}-web 3000:80
+
+  then open http://localhost:3000
+{{- end }}
+
+Reach the API from this machine:
+
+  kubectl port-forward --namespace {{ .Release.Namespace }} service/{{ include "patrimoine.fullname" . }} 8080:{{ .Values.service.port }}
+
+  then open http://localhost:8080/api/v1/portfolio
+       and     http://localhost:8080/swagger-ui.html
+{{- end }}
+
+Health and build information are on the management port, which is not part of the Service:
+
+  kubectl port-forward --namespace {{ .Release.Namespace }} deployment/{{ include "patrimoine.fullname" . }} 8081:8081
+
+  then open http://localhost:8081/actuator/health
+
+Check the release end to end:
+
+  helm test {{ .Release.Name }} --namespace {{ .Release.Namespace }}
+{{- if or .Values.demo.postgresql.enabled .Values.demo.redis.enabled }}
+
+WARNING: the in-cluster demo database and cache are enabled. They have no backups and their
+password is stored in the release values. Do not use this configuration for real data.
+{{- end }}

@@ -1,0 +1,55 @@
+{{- if .Values.ingress.enabled }}
+{{- $api := include "patrimoine.fullname" . }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $api }}
+  labels:
+    {{- include "patrimoine.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with .Values.ingress.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host | quote }}
+      secretName: {{ required "ingress.tls.secretName is required when TLS is enabled" .Values.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.host | quote }}
+      http:
+        paths:
+          {{- if .Values.web.enabled }}
+          # The API and its documentation go straight to the API; everything else is the web
+          # application. nginx could forward /api too, but there is no reason to add the hop here.
+          {{- range list "/api" "/swagger-ui" "/v3/api-docs" }}
+          - path: {{ . }}
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $api }}
+                port:
+                  name: http
+          {{- end }}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $api }}-web
+                port:
+                  name: http
+          {{- else }}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $api }}
+                port:
+                  name: http
+          {{- end }}
+{{- end }}

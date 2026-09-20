@@ -1,0 +1,53 @@
+{{- /*
+`helm test <release>`: the API answers through its Service and, when the web application is
+deployed, the page is served and nginx forwards /api to the API. Every container must succeed.
+*/ -}}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "patrimoine.fullname" . }}-test-api
+  labels:
+    {{- include "patrimoine.labels" . | nindent 4 }}
+    app.kubernetes.io/component: test
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: portfolio
+      image: busybox:1.37
+      command:
+        - wget
+        - -q
+        - -O
+        - "-"
+        - "http://{{ include "patrimoine.fullname" . }}:{{ .Values.service.port }}/api/v1/portfolio"
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]
+    {{- if .Values.web.enabled }}
+    {{- range $name, $path := dict "web-page" "/" "web-api-proxy" "/api/v1/portfolio" }}
+    - name: {{ $name }}
+      image: busybox:1.37
+      command:
+        - wget
+        - -q
+        - -O
+        - /dev/null
+        - "http://{{ include "patrimoine.fullname" $ }}-web{{ $path }}"
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]
+    {{- end }}
+    {{- end }}

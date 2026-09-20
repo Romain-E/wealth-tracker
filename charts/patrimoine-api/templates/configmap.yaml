@@ -1,0 +1,19 @@
+{{- /*
+Non-secret settings, as environment variables. Names follow Spring's relaxed binding:
+PATRIMOINE_QUOTES_LIVEPRICES sets patrimoine.quotes.live-prices (dashes are dropped, not turned
+into underscores; PATRIMOINE_QUOTES_LIVE_PRICES would silently set nothing).
+*/ -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "patrimoine.fullname" . }}
+  labels:
+    {{- include "patrimoine.labels" . | nindent 4 }}
+data:
+  SPRING_PROFILES_ACTIVE: {{ include "patrimoine.springProfiles" . | quote }}
+  DB_URL: {{ include "patrimoine.databaseUrl" . | quote }}
+  {{- with include "patrimoine.redisHost" . }}
+  SPRING_DATA_REDIS_HOST: {{ . | quote }}
+  {{- end }}
+  SPRING_DATA_REDIS_PORT: {{ .Values.redis.port | quote }}
+  PATRIMOINE_QUOTES_LIVEPRICES: {{ .Values.quotes.livePrices | quote }}
