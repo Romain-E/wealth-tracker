@@ -42,7 +42,7 @@ class PortfolioControllerTest {
     }
 
     @Test
-    @DisplayName("renders the total with both breakdowns")
+    @DisplayName("renders the total with its breakdowns")
     void rendersTheTotalAndItsBreakdowns() throws Exception {
         when(overview.overview())
                 .thenReturn(
@@ -78,6 +78,7 @@ class PortfolioControllerTest {
                                               "id": "%s",
                                               "type": "PEA",
                                               "typeLabel": "Plan d'epargne en actions",
+                                              "category": "INVESTMENTS",
                                               "label": "PEA",
                                               "value": {"amount": 65050.30, "currency": "EUR"},
                                               "sharePercent": 17.8195,
@@ -95,7 +96,15 @@ class PortfolioControllerTest {
                 // promise: passbooks first, property last.
                 .andExpect(jsonPath("$.byType[0].type").value("PEA"))
                 .andExpect(jsonPath("$.byType[1].type").value("REAL_ESTATE"))
-                .andExpect(jsonPath("$.byType[1].label").value("Immobilier"));
+                .andExpect(jsonPath("$.byType[1].label").value("Immobilier"))
+                .andExpect(jsonPath("$.byType[1].category").value("REAL_ESTATE"))
+                // One level up, each family with its share, for the dashboard to group under.
+                .andExpect(jsonPath("$.byCategory.length()").value(2))
+                .andExpect(jsonPath("$.byCategory[0].category").value("INVESTMENTS"))
+                .andExpect(jsonPath("$.byCategory[0].label").value("Placements"))
+                .andExpect(jsonPath("$.byCategory[0].value.amount").value(65050.30))
+                .andExpect(jsonPath("$.byCategory[0].sharePercent").value(17.8195))
+                .andExpect(jsonPath("$.byCategory[1].category").value("REAL_ESTATE"));
     }
 
     @Test

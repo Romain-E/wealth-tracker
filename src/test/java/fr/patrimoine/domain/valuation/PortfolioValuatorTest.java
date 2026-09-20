@@ -3,6 +3,7 @@ package fr.patrimoine.domain.valuation;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import fr.patrimoine.domain.model.Account;
+import fr.patrimoine.domain.model.AccountCategory;
 import fr.patrimoine.domain.model.AccountId;
 import fr.patrimoine.domain.model.AccountType;
 import fr.patrimoine.domain.model.InstrumentId;
@@ -73,6 +74,27 @@ class PortfolioValuatorTest {
                 .containsEntry(AccountType.LDDS, Money.euros("5000.00"))
                 .containsEntry(AccountType.PEA, Money.euros("35000.00"))
                 .containsEntry(AccountType.REAL_ESTATE, Money.euros("250000.00"));
+        // Passbooks, then investments, then property, whatever order the accounts came in.
+        assertThat(portfolio.byCategory())
+                .containsExactly(
+                        Map.entry(AccountCategory.SAVINGS, Money.euros("20000.00")),
+                        Map.entry(AccountCategory.INVESTMENTS, Money.euros("35000.00")),
+                        Map.entry(AccountCategory.REAL_ESTATE, Money.euros("250000.00")));
+    }
+
+    @Test
+    @DisplayName("a family with no account is left out of the breakdown rather than shown at zero")
+    void leavesOutEmptyFamilies() {
+        Account cto = savings(AccountType.CTO, "8000.00");
+        Account livretA = savings(AccountType.LIVRET_A, "2000.00");
+
+        PortfolioValuation portfolio =
+                valuator.value(List.of(cto, livretA), ValuationContext.of(TODAY, Map.of()));
+
+        assertThat(portfolio.byCategory())
+                .containsExactly(
+                        Map.entry(AccountCategory.SAVINGS, Money.euros("2000.00")),
+                        Map.entry(AccountCategory.INVESTMENTS, Money.euros("8000.00")));
     }
 
     @Test

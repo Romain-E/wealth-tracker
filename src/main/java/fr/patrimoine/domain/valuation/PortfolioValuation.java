@@ -1,5 +1,6 @@
 package fr.patrimoine.domain.valuation;
 
+import fr.patrimoine.domain.model.AccountCategory;
 import fr.patrimoine.domain.model.AccountType;
 import fr.patrimoine.domain.model.Money;
 import java.time.LocalDate;
@@ -37,6 +38,16 @@ public record PortfolioValuation(
         ordered.putAll(Objects.requireNonNullElse(byType, Map.of()));
         byType = Collections.unmodifiableMap(ordered);
         warnings = List.copyOf(Objects.requireNonNullElse(warnings, List.of()));
+    }
+
+    /**
+     * The same money, one level up: each family of envelopes and its total, in family order. Built
+     * from {@code byType}, so the two breakdowns cannot disagree.
+     */
+    public Map<AccountCategory, Money> byCategory() {
+        EnumMap<AccountCategory, Money> totals = new EnumMap<>(AccountCategory.class);
+        byType.forEach((type, value) -> totals.merge(type.category(), value, Money::plus));
+        return Collections.unmodifiableMap(totals);
     }
 
     public boolean isComplete() {

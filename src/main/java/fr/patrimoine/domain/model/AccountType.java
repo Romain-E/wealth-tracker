@@ -7,9 +7,9 @@ import java.util.Set;
  * The French wealth envelopes this application understands.
  *
  * <p>This enum is the single table that encodes the regulatory shape of each envelope. Everything
- * downstream &mdash; which valuation strategy applies, whether a trade is legal, whether a payment
- * is capped &mdash; is derived from it, so adding "PEA-PME" later is one row here rather than a
- * search for {@code switch} statements across the codebase.
+ * downstream &mdash; which family it belongs to, which valuation strategy applies, whether a trade
+ * is legal, whether a payment is capped &mdash; is derived from it, so adding "PEA-PME" later is
+ * one row here rather than a search for {@code switch} statements across the codebase.
  *
  * <p>Ceilings are as of 2026 and are deliberately hard-coded rather than configurable: they are
  * facts of French law, they change roughly once a decade, and a wrong value in a config map is much
@@ -22,6 +22,7 @@ public enum AccountType {
      */
     LIVRET_A(
             "Livret A",
+            AccountCategory.SAVINGS,
             ValuationMethod.REGULATED_SAVINGS,
             CeilingBasis.NET_PAYMENTS,
             "22950.00",
@@ -30,6 +31,7 @@ public enum AccountType {
     /** Sustainable-development passbook. Same mechanics as the Livret A, lower cap. */
     LDDS(
             "Livret de developpement durable et solidaire",
+            AccountCategory.SAVINGS,
             ValuationMethod.REGULATED_SAVINGS,
             CeilingBasis.NET_PAYMENTS,
             "12000.00",
@@ -41,6 +43,7 @@ public enum AccountType {
      */
     PEA(
             "Plan d'epargne en actions",
+            AccountCategory.INVESTMENTS,
             ValuationMethod.MARKET,
             CeilingBasis.GROSS_PAYMENTS,
             "150000.00",
@@ -49,6 +52,7 @@ public enum AccountType {
     /** Ordinary securities account. No cap, no eligibility restriction, no tax shelter either. */
     CTO(
             "Compte-titres ordinaire",
+            AccountCategory.INVESTMENTS,
             ValuationMethod.MARKET,
             CeilingBasis.NONE,
             null,
@@ -57,6 +61,7 @@ public enum AccountType {
     /** Crypto-asset account held at an exchange or in self-custody. */
     CRYPTO(
             "Crypto-actifs",
+            AccountCategory.INVESTMENTS,
             ValuationMethod.MARKET,
             CeilingBasis.NONE,
             null,
@@ -67,12 +72,25 @@ public enum AccountType {
      * unit-linked side is priced by the insurer on its own calendar, so the honest answer is
      * whatever the last statement said.
      */
-    ASSURANCE_VIE("Assurance vie", ValuationMethod.SNAPSHOT, CeilingBasis.NONE, null, Set.of()),
+    ASSURANCE_VIE(
+            "Assurance vie",
+            AccountCategory.INVESTMENTS,
+            ValuationMethod.SNAPSHOT,
+            CeilingBasis.NONE,
+            null,
+            Set.of()),
 
     /** Property. Valued by appraisal, which is to say by opinion, which is to say by snapshot. */
-    REAL_ESTATE("Immobilier", ValuationMethod.SNAPSHOT, CeilingBasis.NONE, null, Set.of());
+    REAL_ESTATE(
+            "Immobilier",
+            AccountCategory.REAL_ESTATE,
+            ValuationMethod.SNAPSHOT,
+            CeilingBasis.NONE,
+            null,
+            Set.of());
 
     private final String label;
+    private final AccountCategory category;
     private final ValuationMethod valuationMethod;
     private final CeilingBasis ceilingBasis;
     private final Money ceiling;
@@ -80,11 +98,13 @@ public enum AccountType {
 
     AccountType(
             String label,
+            AccountCategory category,
             ValuationMethod valuationMethod,
             CeilingBasis ceilingBasis,
             String ceiling,
             Set<InstrumentKind> eligibleInstruments) {
         this.label = label;
+        this.category = category;
         this.valuationMethod = valuationMethod;
         this.ceilingBasis = ceilingBasis;
         this.ceiling = ceiling == null ? null : Money.euros(ceiling);
@@ -93,6 +113,10 @@ public enum AccountType {
 
     public String label() {
         return label;
+    }
+
+    public AccountCategory category() {
+        return category;
     }
 
     public ValuationMethod valuationMethod() {
