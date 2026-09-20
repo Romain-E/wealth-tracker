@@ -7,7 +7,7 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.5.16</version>
+    <version>4.1.1</version>
     <relativePath/>
   </parent>
 
@@ -21,17 +21,14 @@
     <java.version>21</java.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-    <!-- Overrides of versions the Spring Boot BOM manages, to pull in a security fix the
-         parent does not carry yet: 3.5.16 pins netty 4.1.135 and Tomcat 10.1.55, which
-         Trivy fails the build on (CVE-2026-75595, CVE-2026-65182, CVE-2026-65905,
-         CVE-2026-68525). Both stay on the minor line the parent was tested against, so
-         only patch-level fixes come with them. Delete these two lines as soon as a Spring
-         Boot release carries at least these versions: an override that outlives its reason
-         silently holds the whole BOM back. -->
-    <netty.version>4.1.138.Final</netty.version>
-    <tomcat.version>10.1.60</tomcat.version>
+    <!-- Spring Boot 4.1.1 manages Tomcat 11.0.24, and the three security fixes this project
+         needs (CVE-2026-65182, CVE-2026-65905, CVE-2026-68525) landed in 11.0.25. Patch level
+         only, on the minor line the parent was tested against. Netty needs no such override any
+         more: the parent already brings 4.2.17, which carries its fix. Delete this line as soon
+         as a Spring Boot release manages 11.0.25 or later. -->
+    <tomcat.version>11.0.26</tomcat.version>
 
-    <springdoc.version>2.9.1</springdoc.version>
+    <springdoc.version>3.1.1</springdoc.version>
     <resilience4j.version>2.4.0</resilience4j.version>
     <archunit.version>1.5.0</archunit.version>
     <wiremock.version>3.13.2</wiremock.version>
@@ -50,11 +47,16 @@
     <!-- ===================== web / api ===================== -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-web</artifactId>
+      <artifactId>spring-boot-starter-webmvc</artifactId>
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-validation</artifactId>
+    </dependency>
+    <!-- RestClient, used to call the price providers, is its own module since Boot 4. -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-restclient</artifactId>
     </dependency>
     <dependency>
       <groupId>org.springdoc</groupId>
@@ -68,8 +70,8 @@
       <artifactId>spring-boot-starter-data-jpa</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.flywaydb</groupId>
-      <artifactId>flyway-core</artifactId>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-flyway</artifactId>
     </dependency>
     <dependency>
       <groupId>org.flywaydb</groupId>
@@ -94,12 +96,12 @@
     <!-- ============ resilience (AOP powers the annotations) ============ -->
     <dependency>
       <groupId>io.github.resilience4j</groupId>
-      <artifactId>resilience4j-spring-boot3</artifactId>
+      <artifactId>resilience4j-spring-boot4</artifactId>
       <version>${resilience4j.version}</version>
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-aop</artifactId>
+      <artifactId>spring-boot-starter-aspectj</artifactId>
     </dependency>
 
     <!-- ===================== observability ===================== -->
@@ -113,7 +115,18 @@
     <!-- ===================== test ===================== -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-test</artifactId>
+      <artifactId>spring-boot-starter-webmvc-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-jpa-test</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- TestRestTemplate, which @SpringBootTest no longer provides on its own. -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-resttestclient</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -123,12 +136,12 @@
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
-      <artifactId>junit-jupiter</artifactId>
+      <artifactId>testcontainers-junit-jupiter</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
-      <artifactId>postgresql</artifactId>
+      <artifactId>testcontainers-postgresql</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>

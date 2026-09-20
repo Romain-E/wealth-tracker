@@ -1,7 +1,5 @@
 package fr.patrimoine.infrastructure.quote;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.patrimoine.domain.model.InstrumentId;
 import fr.patrimoine.domain.model.Price;
 import fr.patrimoine.domain.model.Quote;
@@ -23,6 +21,8 @@ import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.types.Expiration;
 import org.springframework.stereotype.Component;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Recently fetched prices, in Redis.
@@ -122,7 +122,7 @@ class QuoteCache {
                             quote.price().value(),
                             quote.price().currency().getCurrencyCode(),
                             quote.asOf()));
-        } catch (JsonProcessingException impossible) {
+        } catch (JacksonException impossible) {
             throw new IllegalStateException("Cannot serialise a quote", impossible);
         }
     }
@@ -132,7 +132,7 @@ class QuoteCache {
         Entry entry;
         try {
             entry = json.readValue(value, Entry.class);
-        } catch (JsonProcessingException unreadable) {
+        } catch (JacksonException unreadable) {
             entry = null;
         }
         if (entry == null || !entry.isComplete()) {

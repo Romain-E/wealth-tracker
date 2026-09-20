@@ -45,7 +45,9 @@ class ApiExceptionHandler extends ResponseEntityExceptionHandler {
     /** Problem types are relative URIs: this API documents them, it does not host a website. */
     private static final String TYPE_PREFIX = "/problems/";
 
-    private static final HttpStatus RULE_REFUSED = HttpStatus.UNPROCESSABLE_ENTITY;
+    // 422, under the name RFC 9110 gave it. Spring keeps UNPROCESSABLE_ENTITY as a deprecated
+    // alias of the same code, and the name is what the problem document carries as its title.
+    private static final HttpStatus RULE_REFUSED = HttpStatus.UNPROCESSABLE_CONTENT;
     private static final Map<String, HttpStatus> STATUS_BY_CODE =
             Map.of("currency-mismatch", HttpStatus.BAD_REQUEST);
 

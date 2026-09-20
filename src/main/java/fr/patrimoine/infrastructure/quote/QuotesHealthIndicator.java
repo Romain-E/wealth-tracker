@@ -5,9 +5,9 @@ import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import org.springframework.boot.actuate.health.Health;
-import org.springframework.boot.actuate.health.HealthIndicator;
-import org.springframework.boot.actuate.health.Status;
+import org.springframework.boot.health.contributor.Health;
+import org.springframework.boot.health.contributor.HealthIndicator;
+import org.springframework.boot.health.contributor.Status;
 import org.springframework.stereotype.Component;
 
 /**

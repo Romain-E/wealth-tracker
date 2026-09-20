@@ -1,7 +1,5 @@
 package fr.patrimoine.infrastructure.quote;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.MissingNode;
 import fr.patrimoine.domain.model.InstrumentId;
 import fr.patrimoine.domain.model.InstrumentKind;
 import fr.patrimoine.domain.model.Price;
@@ -32,6 +30,8 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.util.UriBuilder;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.MissingNode;
 
 /**
  * Equity, ETF and fund prices from Yahoo Finance.

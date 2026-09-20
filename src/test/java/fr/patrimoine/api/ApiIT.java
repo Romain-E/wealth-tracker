@@ -9,8 +9,9 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.resttestclient.TestRestTemplate;
+import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -29,6 +30,8 @@ import org.springframework.test.context.TestPropertySource;
  * wired to each other, which is the failure no amount of mocking can catch.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+// Since Spring Boot 4, @SpringBootTest no longer hands out a TestRestTemplate on its own.
+@AutoConfigureTestRestTemplate
 @ActiveProfiles("demo")
 // Prices come from the seed: a test must not depend on a website being up.
 @TestPropertySource(properties = "patrimoine.quotes.live-prices=false")
@@ -110,7 +113,7 @@ class ApiIT {
                         String.class,
                         LIVRET_A);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
         assertThat(response.getBody())
                 .contains("/problems/deposit-ceiling-exceeded")
                 .contains("22950.00");

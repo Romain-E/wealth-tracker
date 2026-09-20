@@ -8,7 +8,7 @@ valued, and reports what the money actually earned.
 
 It is a complete delivery, not only an API:
 
-- **Backend:** Java 21 and Spring Boot 3.5, with a hexagonal architecture enforced by tests.
+- **Backend:** Java 21 and Spring Boot 4.1, with a hexagonal architecture enforced by tests.
 - **Data:** PostgreSQL with Flyway migrations; Redis as a price cache; live market prices behind
   circuit breakers.
 - **Frontend:** a typed React app.
@@ -189,7 +189,7 @@ X-Correlation-Id: 5f0c…
 
 {
   "type": "/problems/deposit-ceiling-exceeded",
-  "title": "Unprocessable Entity",
+  "title": "Unprocessable Content",
   "status": 422,
   "detail": "Livret A payments are capped at …; this payment would bring them to …",
   "code": "deposit-ceiling-exceeded",

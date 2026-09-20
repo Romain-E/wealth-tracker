@@ -1,6 +1,5 @@
 package fr.patrimoine.infrastructure.quote;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import fr.patrimoine.domain.model.InstrumentId;
 import fr.patrimoine.domain.model.InstrumentKind;
 import fr.patrimoine.domain.model.Price;
@@ -16,6 +15,7 @@ import java.util.TreeMap;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import tools.jackson.databind.JsonNode;
 
 /**
  * Crypto prices from CoinGecko's public API.

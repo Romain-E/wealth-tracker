@@ -2,22 +2,23 @@ package fr.patrimoine.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.patrimoine.infrastructure.persistence.PostgresContainerConfiguration;
 import java.util.HashSet;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.resttestclient.TestRestTemplate;
+import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalManagementPort;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * What Kubernetes and an operator see: the probes, the health details and the build information,
@@ -28,6 +29,8 @@ import org.springframework.test.context.TestPropertySource;
  * and alive, and say that it is degraded.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+// Since Spring Boot 4, @SpringBootTest no longer hands out a TestRestTemplate on its own.
+@AutoConfigureTestRestTemplate
 @ActiveProfiles("demo")
 @Import(PostgresContainerConfiguration.class)
 @TestPropertySource(
@@ -50,7 +53,7 @@ class ProbesIT {
 
     private static Set<String> components(JsonNode health) {
         Set<String> names = new HashSet<>();
-        health.path("components").fieldNames().forEachRemaining(names::add);
+        names.addAll(health.path("components").propertyNames());
         return names;
     }
 

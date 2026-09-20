@@ -40,6 +40,7 @@ class ArchitectureTest {
                             "jakarta.validation..",
                             "org.hibernate..",
                             "com.fasterxml.jackson..",
+                            "tools.jackson..",
                             "io.github.resilience4j..")
                     .because(
                             "the domain must be testable, and readable, without any framework on the"

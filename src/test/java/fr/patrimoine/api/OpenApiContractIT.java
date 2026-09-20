@@ -2,12 +2,6 @@ package fr.patrimoine.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.core.util.DefaultIndenter;
-import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.cfg.JsonNodeFeature;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import fr.patrimoine.infrastructure.persistence.PostgresContainerConfiguration;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -15,11 +9,18 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.resttestclient.TestRestTemplate;
+import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
+import tools.jackson.core.util.DefaultIndenter;
+import tools.jackson.core.util.DefaultPrettyPrinter;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.cfg.JsonNodeFeature;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The frontend is compiled against {@code web/openapi.json}, a copy of this API's contract kept in
@@ -38,6 +39,8 @@ import org.springframework.test.context.TestPropertySource;
  * <p>Same configuration as {@link ApiIT}, so both share one application context.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+// Since Spring Boot 4, @SpringBootTest no longer hands out a TestRestTemplate on its own.
+@AutoConfigureTestRestTemplate
 @ActiveProfiles("demo")
 @TestPropertySource(properties = "patrimoine.quotes.live-prices=false")
 @Import(PostgresContainerConfiguration.class)
@@ -79,7 +82,7 @@ class OpenApiContractIT {
     private static void write(JsonNode contract) throws Exception {
         DefaultPrettyPrinter printer =
                 new DefaultPrettyPrinter().withObjectIndenter(new DefaultIndenter("  ", "\n"));
-        String text = STABLE_JSON.writer(printer).writeValueAsString(contract) + "\n";
+        String text = STABLE_JSON.writer().with(printer).writeValueAsString(contract) + "\n";
         Files.writeString(CONTRACT, text, StandardCharsets.UTF_8);
     }
 }

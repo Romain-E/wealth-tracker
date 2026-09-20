@@ -31,8 +31,9 @@ spring:
     # which hides N+1 queries and keeps a connection checked out while JSON is written.
     open-in-view: false
   jackson:
-    # Plain notation: a large portfolio total must not reach a client as 1.7E+5.
-    generator:
+    # Plain notation: a large portfolio total must not reach a client as 1.7E+5. Jackson 3 made
+    # this a StreamWriteFeature, shared by every format, so it moved from `generator` to `write`.
+    write:
       write-bigdecimal-as-plain: true
   data:
     redis:
