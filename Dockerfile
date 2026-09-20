@@ -7,7 +7,7 @@
 # installed but Docker. Tests are not run here: they start containers of their own
 # (Testcontainers), and CI runs them before it builds this image.
 # =============================================================================================
-FROM eclipse-temurin:21-jdk-alpine AS build
+FROM eclipse-temurin:24-jdk-alpine AS build
 WORKDIR /workspace
 
 # Dependencies first. This layer only changes when the pom does, so a code change rebuilds in
@@ -31,7 +31,7 @@ RUN --mount=type=cache,target=/root/.m2 \
 # =============================================================================================
 # Runtime stage: a JRE, the application split into layers, nothing else.
 # =============================================================================================
-FROM eclipse-temurin:21-jre-alpine AS runtime
+FROM eclipse-temurin:24-jre-alpine AS runtime
 
 # A fixed, numeric, unprivileged user. Kubernetes can only enforce runAsNonRoot when the image's
 # USER is numeric; a name would make it refuse to start the pod.
