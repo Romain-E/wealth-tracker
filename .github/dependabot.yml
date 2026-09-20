@@ -1,0 +1,34 @@
+# Weekly update pull requests. Each one runs the full pipeline, so an upgrade only merges once
+# the tests, the image scan and the Kubernetes deployment all pass with it.
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      # Spring Boot manages most versions; its libraries move together and are reviewed together.
+      spring:
+        patterns:
+          - "org.springframework*"
+
+  # Updates the pinned SHAs in the workflows, along with their version comments.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+
+  # Base images in the Dockerfiles: new JDK and nginx patches, Alpine security fixes.
+  - package-ecosystem: docker
+    directories: [/, /web]
+    schedule:
+      interval: weekly
+
+  # The web application. Minor and patch updates arrive as one pull request, majors one by one.
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+    groups:
+      web-minor:
+        update-types: [minor, patch]

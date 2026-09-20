@@ -1,0 +1,440 @@
+name: CI
+
+# One pipeline, from commit to registry:
+#
+#   verify (API) ──┬──► images ──┬──► smoke (docker compose) ──┐
+#   web ───────────┘              │                              ├──► publish (default branch, v* tags)
+#   chart (lint) ─────────────────┴──► kubernetes (kind + helm) ─┘
+#
+# The two images, API and web, are built once and exported as archives. The jobs after that test
+# those archives, and publish pushes the same archives: what reaches the registry is, byte for
+# byte, what passed.
+#
+# Every third-party action is pinned to a full commit SHA, with the version in a comment.
+# A tag can be moved to point at other code; a SHA cannot. Dependabot keeps both up to date.
+
+on:
+  push:
+    branches: [main, master]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+# Least privilege for every job. Only publish asks for more, and only for itself.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  # A newer push to a pull request makes the running build pointless. A push to main must finish.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  IMAGE_NAME: patrimoine-api
+  WEB_IMAGE_NAME: patrimoine-web
+  NODE_VERSION: "22"
+  HELM_VERSION: v3.19.0
+  KUBECONFORM_VERSION: v0.7.0
+  KUBERNETES_VERSION: 1.34.0
+
+jobs:
+  verify:
+    name: Build and test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      # First, because it takes seconds and a formatting slip should not cost a full build.
+      - name: Formatting
+        run: ./mvnw --batch-mode spotless:check
+
+      # Unit tests, then integration tests against real PostgreSQL and Redis started by
+      # Testcontainers on the runner's Docker, then the domain coverage gate and SpotBugs.
+      - name: Tests, coverage gate and static analysis
+        run: ./mvnw --batch-mode verify spotbugs:check
+
+      - name: Keep the test reports
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: test-reports
+          path: |
+            target/surefire-reports/
+            target/failsafe-reports/
+          retention-days: 7
+
+      - name: Keep the coverage report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage
+          path: target/site/jacoco/
+          retention-days: 14
+
+  web:
+    name: Web application
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      # Exactly the locked versions. Install scripts are skipped: no dependency needs one, and a
+      # compromised package most often strikes through them.
+      - name: Install
+        run: npm ci --ignore-scripts
+
+      # The client types are generated from web/openapi.json, which OpenApiContractIT keeps equal
+      # to what the API serves. A contract change that breaks the web app fails here.
+      - name: Lint and formatting
+        run: |
+          npm run lint
+          npm run format:check
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Tests and coverage gate
+        run: npm test -- --coverage
+
+      - name: Build
+        run: npm run build
+
+      - name: Keep the coverage report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: web-coverage
+          path: web/coverage/
+          retention-days: 14
+
+  chart:
+    name: Helm chart
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Install kubeconform
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin" && cd "$RUNNER_TEMP/bin"
+          base="https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}"
+          curl -sSfLO "$base/kubeconform-linux-amd64.tar.gz"
+          curl -sSfLO "$base/CHECKSUMS"
+          # A downloaded binary is only run once its checksum matches the published one.
+          sha256sum --check --ignore-missing CHECKSUMS
+          tar -xzf kubeconform-linux-amd64.tar.gz kubeconform
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Lint, render and validate against the Kubernetes schema
+        run: |
+          chart=charts/patrimoine-api
+          demo=(--values "$chart/values-demo.yaml")
+          # A production-like configuration: external database and cache, TLS, autoscaling.
+          production=(
+            --set database.url=jdbc:postgresql://db.internal:5432/patrimoine
+            --set database.existingSecret=patrimoine-db
+            --set redis.host=redis.internal
+            --set ingress.enabled=true
+            --set ingress.tls.enabled=true
+            --set ingress.tls.secretName=patrimoine-tls
+            --set autoscaling.enabled=true
+          )
+          helm lint "$chart" "${demo[@]}"
+          helm lint "$chart" "${production[@]}"
+          helm template ci "$chart" "${demo[@]}" \
+            | kubeconform -strict -summary -kubernetes-version "$KUBERNETES_VERSION"
+          helm template ci "$chart" "${production[@]}" \
+            | kubeconform -strict -summary -kubernetes-version "$KUBERNETES_VERSION"
+
+  images:
+    name: Container images
+    needs: [verify, web]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      # The Dockerfile reads the commit id from .git, which the checkout provides.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build the API
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          tags: ${{ env.IMAGE_NAME }}:ci
+          # Exported once, never rebuilt: the next jobs test this archive and publish pushes it.
+          outputs: type=docker,dest=${{ runner.temp }}/api-image.tar
+          # Maven dependencies and unchanged layers come from the Actions cache. Each image has
+          # its own scope, so one build does not overwrite the other's cache.
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+      - name: Build the web application
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: web
+          tags: ${{ env.WEB_IMAGE_NAME }}:ci
+          outputs: type=docker,dest=${{ runner.temp }}/web-image.tar
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+      # Fails on a critical vulnerability that already has a fix: those are the ones worth
+      # stopping a release for, because updating is all it takes.
+      - name: Scan the API for known vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          input: ${{ runner.temp }}/api-image.tar
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Scan the web application for known vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          input: ${{ runner.temp }}/web-image.tar
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: images
+          path: |
+            ${{ runner.temp }}/api-image.tar
+            ${{ runner.temp }}/web-image.tar
+          retention-days: 1
+
+  smoke:
+    name: Smoke test (docker compose)
+    needs: images
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: images
+          path: ${{ runner.temp }}
+
+      - name: Start the stack with the tested images
+        run: |
+          docker load --input "$RUNNER_TEMP/api-image.tar"
+          docker load --input "$RUNNER_TEMP/web-image.tar"
+          docker tag "$IMAGE_NAME:ci" patrimoine-api:local
+          docker tag "$WEB_IMAGE_NAME:ci" patrimoine-web:local
+          docker compose up --detach --no-build --wait --wait-timeout 180
+
+      - name: Exercise the API
+        run: |
+          curl --fail --silent --show-error http://localhost:8081/actuator/health/readiness
+          curl --fail --silent --show-error http://localhost:8080/api/v1/portfolio \
+            | jq --exit-status '.accounts | length == 7'
+          # A business rule enforced end to end: the demo Livret A has 500 EUR of room left.
+          body=$(jq --null-input --arg date "$(date +%F)" \
+            '{type: "DEPOSIT", date: $date, amount: {amount: 5000.00, currency: "EUR"}}')
+          status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            --header 'Content-Type: application/json' --data "$body" \
+            http://localhost:8080/api/v1/accounts/00000000-0000-4000-a000-000000000001/transactions)
+          test "$status" = 422
+
+      # What a browser gets: the page, a deep link served by the single-page fallback with its
+      # security headers, and the API through nginx, the caller's correlation id carried through.
+      - name: Exercise the web application
+        run: |
+          curl --fail --silent --show-error http://localhost:3000/ | grep --quiet '<div id="root">'
+          curl --fail --silent --show-error --head \
+            http://localhost:3000/comptes/00000000-0000-4000-a000-000000000001 \
+            | grep --ignore-case --quiet '^content-security-policy:'
+          headers=$(curl --fail --silent --show-error --output /dev/null --dump-header - \
+            --header 'X-Correlation-Id: ci-smoke-test' http://localhost:3000/api/v1/portfolio)
+          grep --ignore-case --quiet '^x-correlation-id: ci-smoke-test' <<< "$headers"
+
+      - name: Logs
+        if: failure()
+        run: docker compose logs
+
+      - name: Stop
+        if: always()
+        run: docker compose down --volumes
+
+  kubernetes:
+    name: Deploy to kind
+    needs: [images, chart]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: images
+          path: ${{ runner.temp }}
+
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - uses: helm/kind-action@06c1ae10762d3b9c1644e7fe69596ae519e015a2 # v1.15.0
+        with:
+          cluster_name: patrimoine
+
+      # Live prices are switched off: a deployment test must not depend on a website being up.
+      - name: Install the chart with the tested images
+        run: |
+          docker load --input "$RUNNER_TEMP/api-image.tar"
+          docker load --input "$RUNNER_TEMP/web-image.tar"
+          docker tag "$IMAGE_NAME:ci" patrimoine-api:local
+          docker tag "$WEB_IMAGE_NAME:ci" patrimoine-web:local
+          kind load docker-image patrimoine-api:local patrimoine-web:local --name patrimoine
+          helm install patrimoine-api charts/patrimoine-api \
+            --values charts/patrimoine-api/values-demo.yaml \
+            --set quotes.livePrices=false \
+            --wait --timeout 5m
+
+      - name: helm test
+        run: helm test patrimoine-api --logs
+
+      - name: Diagnostics
+        if: failure()
+        run: |
+          kubectl get pods --output wide
+          kubectl describe pods
+          kubectl logs deployment/patrimoine-api --tail=200 || true
+          kubectl logs deployment/patrimoine-api-web --tail=50 || true
+
+  publish:
+    name: Publish
+    needs: [smoke, kubernetes]
+    # The repository's default branch, whatever it is called, and release tags.
+    if: >-
+      github.event_name == 'push'
+      && (github.ref_name == github.event.repository.default_branch
+          || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      # Push to the GitHub Container Registry with the workflow's own token: no stored secret.
+      packages: write
+      # Sign the provenance attestation through Sigstore, with the workflow's OIDC identity.
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: images
+          path: ${{ runner.temp }}
+
+      # GHCR only accepts lower-case names; a GitHub account name may contain capitals.
+      - name: Registry names
+        id: names
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          {
+            echo "api=ghcr.io/$owner/$IMAGE_NAME"
+            echo "web=ghcr.io/$owner/$WEB_IMAGE_NAME"
+            echo "charts=oci://ghcr.io/$owner/charts"
+          } >> "$GITHUB_OUTPUT"
+
+      # One set of tags for both images, computed for a placeholder name: they are released
+      # together, and the chart deploys both at its appVersion.
+      - name: Tags
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: image
+          # Every image gets its commit. main also moves `latest`; a v1.2.3 tag adds 1.2.3 and 1.2.
+          tags: |
+            type=sha,format=long
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push the tested images
+        id: push
+        env:
+          API: ${{ steps.names.outputs.api }}
+          WEB: ${{ steps.names.outputs.web }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          # push <archive> <local name> <registry name> <output name>
+          push() {
+            docker load --input "$RUNNER_TEMP/$1"
+            while read -r tag; do
+              [ -n "$tag" ] || continue
+              docker tag "$2:ci" "$3:${tag#image:}"
+              docker push --quiet "$3:${tag#image:}"
+            done <<< "$TAGS"
+            digest=$(docker image inspect "$2:ci" \
+              --format '{{range .RepoDigests}}{{println .}}{{end}}' \
+              | grep "^$3@" | head -n 1 | cut -d@ -f2)
+            test -n "$digest"
+            echo "$4=$digest" >> "$GITHUB_OUTPUT"
+            echo "Published $3@$digest" >> "$GITHUB_STEP_SUMMARY"
+          }
+          push api-image.tar "$IMAGE_NAME" "$API" api-digest
+          push web-image.tar "$WEB_IMAGE_NAME" "$WEB" web-digest
+
+      # A signed statement of which workflow, commit and runner produced each digest. Anyone can
+      # check it with `gh attestation verify oci://<image> --owner <owner>` before deploying.
+      - name: Attest the API's provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ steps.names.outputs.api }}
+          subject-digest: ${{ steps.push.outputs.api-digest }}
+          push-to-registry: true
+
+      - name: Attest the web application's provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ steps.names.outputs.web }}
+          subject-digest: ${{ steps.push.outputs.web-digest }}
+          push-to-registry: true
+
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      # On a release, the chart is published next to the image, with the same version, so that
+      # `helm install --version 1.2.3` deploys image 1.2.3 and nothing else.
+      - name: Publish the chart
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          CHARTS: ${{ steps.names.outputs.charts }}
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          helm package charts/patrimoine-api \
+            --version "$version" --app-version "$version" --destination "$RUNNER_TEMP"
+          echo "$REGISTRY_TOKEN" \
+            | helm registry login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          helm push "$RUNNER_TEMP/patrimoine-api-$version.tgz" "$CHARTS"
