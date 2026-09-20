@@ -1,0 +1,830 @@
+{
+  "components" : {
+    "schemas" : {
+      "AccountDetailResponse" : {
+        "description" : "One account with its positions and its remaining legal allowance",
+        "properties" : {
+          "cashBalance" : {
+            "$ref" : "#/components/schemas/MoneyResponse"
+          },
+          "currency" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "openedOn" : {
+            "format" : "date",
+            "type" : "string"
+          },
+          "paymentCeiling" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/MoneyResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "positions" : {
+            "items" : {
+              "$ref" : "#/components/schemas/PositionResponse"
+            },
+            "type" : "array"
+          },
+          "remainingAllowance" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/MoneyResponse"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "stale" : {
+            "type" : "boolean"
+          },
+          "totalValue" : {
+            "$ref" : "#/components/schemas/MoneyResponse"
+          },
+          "type" : {
+            "type" : "string"
+          },
+          "typeLabel" : {
+            "type" : "string"
+          },
+          "warnings" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "cashBalance", "currency", "id", "label", "openedOn", "paymentCeiling", "positions", "remainingAllowance", "stale", "totalValue", "type", "typeLabel", "warnings" ],
+        "type" : "object"
+      },
+      "AccountSummary" : {
+        "properties" : {
+          "category" : {
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "sharePercent" : {
+            "type" : "number"
+          },
+          "stale" : {
+            "type" : "boolean"
+          },
+          "type" : {
+            "type" : "string"
+          },
+          "typeLabel" : {
+            "type" : "string"
+          },
+          "value" : {
+            "$ref" : "#/components/schemas/MoneyResponse"
+          },
+          "warnings" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "category", "id", "label", "sharePercent", "stale", "type", "typeLabel", "value", "warnings" ],
+        "type" : "object"
+      },
+      "AmountRequest" : {
+        "description" : "An amount of money, at cent precision",
+        "properties" : {
+          "amount" : {
+            "example" : 1000.0,
+            "type" : "number"
+          },
+          "currency" : {
+            "example" : "EUR",
+            "pattern" : "^[A-Z]{3}$",
+            "type" : "string"
+          }
+        },
+        "required" : [ "amount", "currency" ],
+        "type" : "object"
+      },
+      "CategorySlice" : {
+        "properties" : {
+          "category" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "sharePercent" : {
+            "type" : "number"
+          },
+          "value" : {
+            "$ref" : "#/components/schemas/MoneyResponse"
+          }
+        },
+        "required" : [ "category", "label", "sharePercent", "value" ],
+        "type" : "object"
+      },
+      "DepositRequest" : {
+        "properties" : {
+          "amount" : {
+            "$ref" : "#/components/schemas/AmountRequest"
+          },
+          "date" : {
+            "format" : "date",
+            "type" : "string"
+          },
+          "type" : {
+            "enum" : [ "DEPOSIT" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "amount", "date", "type" ],
+        "type" : "object"
+      },
+      "MoneyResponse" : {
+        "description" : "A monetary amount with its currency",
+        "properties" : {
+          "amount" : {
+            "example" : 17000.0,
+            "type" : "number"
+          },
+          "currency" : {
+            "example" : "EUR",
+            "type" : "string"
+          }
+        },
+        "required" : [ "amount", "currency" ],
+        "type" : "object"
+      },
+      "PerformanceResponse" : {
+        "description" : "Headline performance figures and the value curve behind them",
+        "properties" : {
+          "annualisedReturnPercent" : {
+            "type" : [ "number", "null" ]
+          },
+          "currency" : {
+            "type" : "string"
+          },
+          "currentValue" : {
+            "$ref" : "#/components/schemas/MoneyResponse"
+          },
+          "netGain" : {
+            "$ref" : "#/components/schemas/MoneyResponse"
+          },
+          "netGainPercent" : {
+            "type" : "number"
+          },
+          "netInvested" : {
+            "$ref" : "#/components/schemas/MoneyResponse"
+          },
+          "series" : {
+            "items" : {
+              "$ref" : "#/components/schemas/Point"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "annualisedReturnPercent", "currency", "currentValue", "netGain", "netGainPercent", "netInvested", "series" ],
+        "type" : "object"
+      },
+      "Point" : {
+        "properties" : {
+          "date" : {
+            "format" : "date",
+            "type" : "string"
+          },
+          "value" : {
+            "type" : "number"
+          }
+        },
+        "required" : [ "date", "value" ],
+        "type" : "object"
+      },
+      "PortfolioResponse" : {
+        "description" : "Total wealth with its per-account, per-envelope and per-family breakdowns",
+        "properties" : {
+          "accounts" : {
+            "items" : {
+              "$ref" : "#/components/schemas/AccountSummary"
+            },
+            "type" : "array"
+          },
+          "asOf" : {
+            "format" : "date",
+            "type" : "string"
+          },
+          "byCategory" : {
+            "items" : {
+              "$ref" : "#/components/schemas/CategorySlice"
+            },
+            "type" : "array"
+          },
+          "byType" : {
+            "items" : {
+              "$ref" : "#/components/schemas/TypeSlice"
+            },
+            "type" : "array"
+          },
+          "stale" : {
+            "type" : "boolean"
+          },
+          "total" : {
+            "$ref" : "#/components/schemas/MoneyResponse"
+          },
+          "warnings" : {
+            "items" : {
+              "type" : "string"
+            },
+            "type" : "array"
+          }
+        },
+        "required" : [ "accounts", "asOf", "byCategory", "byType", "stale", "total", "warnings" ],
+        "type" : "object"
+      },
+      "PositionResponse" : {
+        "properties" : {
+          "averageCost" : {
+            "type" : "number"
+          },
+          "currentPrice" : {
+            "type" : [ "number", "null" ]
+          },
+          "instrument" : {
+            "type" : "string"
+          },
+          "kind" : {
+            "type" : "string"
+          },
+          "marketValue" : {
+            "$ref" : "#/components/schemas/MoneyResponse"
+          },
+          "pricedAt" : {
+            "format" : "date-time",
+            "type" : [ "string", "null" ]
+          },
+          "quantity" : {
+            "type" : "number"
+          },
+          "stale" : {
+            "type" : "boolean"
+          },
+          "totalCost" : {
+            "$ref" : "#/components/schemas/MoneyResponse"
+          },
+          "unrealisedGain" : {
+            "$ref" : "#/components/schemas/MoneyResponse"
+          }
+        },
+        "required" : [ "averageCost", "currentPrice", "instrument", "kind", "marketValue", "pricedAt", "quantity", "stale", "totalCost", "unrealisedGain" ],
+        "type" : "object"
+      },
+      "PriceRequest" : {
+        "description" : "A unit price, up to eight decimals",
+        "properties" : {
+          "amount" : {
+            "example" : 540.0,
+            "minimum" : 0,
+            "type" : "number"
+          },
+          "currency" : {
+            "example" : "EUR",
+            "pattern" : "^[A-Z]{3}$",
+            "type" : "string"
+          }
+        },
+        "required" : [ "amount", "currency" ],
+        "type" : "object"
+      },
+      "Problem" : {
+        "description" : "An RFC 7807 problem document",
+        "properties" : {
+          "code" : {
+            "type" : "string"
+          },
+          "correlationId" : {
+            "type" : "string"
+          },
+          "detail" : {
+            "type" : "string"
+          },
+          "errors" : {
+            "items" : {
+              "properties" : {
+                "field" : {
+                  "type" : "string"
+                },
+                "message" : {
+                  "type" : "string"
+                }
+              },
+              "required" : [ "field", "message" ],
+              "type" : "object"
+            },
+            "type" : "array"
+          },
+          "instance" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "integer"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "status", "title", "type" ],
+        "type" : "object"
+      },
+      "PurchaseRequest" : {
+        "properties" : {
+          "date" : {
+            "format" : "date",
+            "type" : "string"
+          },
+          "fees" : {
+            "$ref" : "#/components/schemas/AmountRequest",
+            "description" : "Dealing fees; omitted means none"
+          },
+          "instrument" : {
+            "example" : "LU1681043599",
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "kind" : {
+            "enum" : [ "EQUITY", "ETF", "FUND", "CRYPTO" ],
+            "type" : "string"
+          },
+          "quantity" : {
+            "exclusiveMinimum" : 0,
+            "type" : "number"
+          },
+          "type" : {
+            "enum" : [ "BUY" ],
+            "type" : "string"
+          },
+          "unitPrice" : {
+            "$ref" : "#/components/schemas/PriceRequest"
+          }
+        },
+        "required" : [ "date", "instrument", "kind", "quantity", "type", "unitPrice" ],
+        "type" : "object"
+      },
+      "SaleRequest" : {
+        "properties" : {
+          "date" : {
+            "format" : "date",
+            "type" : "string"
+          },
+          "fees" : {
+            "$ref" : "#/components/schemas/AmountRequest",
+            "description" : "Dealing fees; omitted means none"
+          },
+          "instrument" : {
+            "example" : "LU1681043599",
+            "minLength" : 1,
+            "type" : "string"
+          },
+          "quantity" : {
+            "exclusiveMinimum" : 0,
+            "type" : "number"
+          },
+          "type" : {
+            "enum" : [ "SELL" ],
+            "type" : "string"
+          },
+          "unitPrice" : {
+            "$ref" : "#/components/schemas/PriceRequest"
+          }
+        },
+        "required" : [ "date", "instrument", "quantity", "type", "unitPrice" ],
+        "type" : "object"
+      },
+      "TransactionRequest" : {
+        "description" : "A movement to record; the type field selects the shape",
+        "discriminator" : {
+          "mapping" : {
+            "BUY" : "#/components/schemas/PurchaseRequest",
+            "DEPOSIT" : "#/components/schemas/DepositRequest",
+            "SELL" : "#/components/schemas/SaleRequest",
+            "WITHDRAWAL" : "#/components/schemas/WithdrawalRequest"
+          },
+          "propertyName" : "type"
+        },
+        "oneOf" : [ {
+          "$ref" : "#/components/schemas/DepositRequest"
+        }, {
+          "$ref" : "#/components/schemas/WithdrawalRequest"
+        }, {
+          "$ref" : "#/components/schemas/PurchaseRequest"
+        }, {
+          "$ref" : "#/components/schemas/SaleRequest"
+        } ]
+      },
+      "TransactionResponse" : {
+        "description" : "A recorded movement on an account",
+        "properties" : {
+          "accountId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "amount" : {
+            "$ref" : "#/components/schemas/MoneyResponse"
+          },
+          "date" : {
+            "format" : "date",
+            "type" : "string"
+          },
+          "id" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "instrument" : {
+            "type" : [ "string", "null" ]
+          },
+          "quantity" : {
+            "type" : [ "number", "null" ]
+          },
+          "type" : {
+            "type" : "string"
+          },
+          "unitPrice" : {
+            "type" : [ "number", "null" ]
+          }
+        },
+        "required" : [ "accountId", "amount", "date", "id", "instrument", "quantity", "type", "unitPrice" ],
+        "type" : "object"
+      },
+      "TypeSlice" : {
+        "properties" : {
+          "category" : {
+            "type" : "string"
+          },
+          "label" : {
+            "type" : "string"
+          },
+          "type" : {
+            "type" : "string"
+          },
+          "value" : {
+            "$ref" : "#/components/schemas/MoneyResponse"
+          }
+        },
+        "required" : [ "category", "label", "type", "value" ],
+        "type" : "object"
+      },
+      "ValuationResponse" : {
+        "description" : "A recorded valuation snapshot",
+        "properties" : {
+          "accountId" : {
+            "format" : "uuid",
+            "type" : "string"
+          },
+          "date" : {
+            "format" : "date",
+            "type" : "string"
+          },
+          "source" : {
+            "type" : "string"
+          },
+          "value" : {
+            "$ref" : "#/components/schemas/MoneyResponse"
+          }
+        },
+        "required" : [ "accountId", "date", "source", "value" ],
+        "type" : "object"
+      },
+      "WithdrawalRequest" : {
+        "properties" : {
+          "amount" : {
+            "$ref" : "#/components/schemas/AmountRequest"
+          },
+          "date" : {
+            "format" : "date",
+            "type" : "string"
+          },
+          "type" : {
+            "enum" : [ "WITHDRAWAL" ],
+            "type" : "string"
+          }
+        },
+        "required" : [ "amount", "date", "type" ],
+        "type" : "object"
+      }
+    }
+  },
+  "info" : {
+    "description" : "Wealth tracking for French savings envelopes: Livret A, LDDS, PEA, compte-titres, crypto, assurance vie and property.\n\nRegulatory rules are enforced by the domain, not by the caller: payment ceilings, instrument eligibility and cash settlement are checked on every movement, and a refusal comes back as a 422 problem document naming the rule.\n\nErrors follow RFC 7807. Every response carries an `X-Correlation-Id` header, and every problem document repeats it, so a reported error can be traced to its request in the logs.",
+    "license" : {
+      "name" : "MIT"
+    },
+    "title" : "Patrimoine API",
+    "version" : "v1"
+  },
+  "openapi" : "3.1.0",
+  "paths" : {
+    "/api/v1/accounts/{accountId}" : {
+      "get" : {
+        "operationId" : "detail",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AccountDetailResponse"
+                }
+              }
+            },
+            "description" : "The account"
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "No such account"
+          }
+        },
+        "summary" : "One account, its positions marked to market, its remaining allowance",
+        "tags" : [ "Accounts" ]
+      }
+    },
+    "/api/v1/accounts/{accountId}/performance" : {
+      "get" : {
+        "operationId" : "account",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "from",
+          "required" : false,
+          "schema" : {
+            "format" : "date",
+            "type" : "string"
+          }
+        }, {
+          "in" : "query",
+          "name" : "to",
+          "required" : false,
+          "schema" : {
+            "format" : "date",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PerformanceResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "Performance of a single envelope",
+        "tags" : [ "Performance" ]
+      }
+    },
+    "/api/v1/accounts/{accountId}/transactions" : {
+      "post" : {
+        "description" : "The envelope's own rules decide: a payment over a regulatory ceiling, an instrument the envelope may not hold, or a purchase with insufficient cash is refused with 422.",
+        "operationId" : "record",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/TransactionRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/TransactionResponse"
+                }
+              }
+            },
+            "description" : "Created"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Malformed body"
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "No such account"
+          },
+          "422" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "A business rule refused the movement"
+          }
+        },
+        "summary" : "Record a deposit, withdrawal, purchase or sale",
+        "tags" : [ "Accounts" ]
+      }
+    },
+    "/api/v1/accounts/{accountId}/valuations/{date}" : {
+      "put" : {
+        "description" : "For envelopes with no market price: property, or a life-insurance contract valued by the insurer's statement. Idempotent per day.",
+        "operationId" : "valuation",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "accountId",
+          "required" : true,
+          "schema" : {
+            "format" : "uuid",
+            "type" : "string"
+          }
+        }, {
+          "in" : "path",
+          "name" : "date",
+          "required" : true,
+          "schema" : {
+            "format" : "date",
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/AmountRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ValuationResponse"
+                }
+              }
+            },
+            "description" : "The valuation, as now recorded"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Malformed body"
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "No such account"
+          }
+        },
+        "summary" : "Set this account's value for a given day",
+        "tags" : [ "Accounts" ]
+      }
+    },
+    "/api/v1/performance" : {
+      "get" : {
+        "description" : "Reports both the cumulative gain and the money-weighted annualised return (XIRR), which answer different questions and often disagree.",
+        "operationId" : "portfolio_1",
+        "parameters" : [ {
+          "description" : "Window start, inclusive. Defaults to a year ago.",
+          "in" : "query",
+          "name" : "from",
+          "required" : false,
+          "schema" : {
+            "format" : "date",
+            "type" : "string"
+          }
+        }, {
+          "description" : "Window end, inclusive. Defaults to today.",
+          "in" : "query",
+          "name" : "to",
+          "required" : false,
+          "schema" : {
+            "format" : "date",
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PerformanceResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "Consolidated performance across every account",
+        "tags" : [ "Performance" ]
+      }
+    },
+    "/api/v1/portfolio" : {
+      "get" : {
+        "description" : "Values every account at today's prices. Accounts that could not be valued cleanly still count towards the total and explain themselves in warnings, rather than being silently dropped.",
+        "operationId" : "portfolio",
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PortfolioResponse"
+                }
+              }
+            },
+            "description" : "OK"
+          }
+        },
+        "summary" : "What the portfolio is worth right now",
+        "tags" : [ "Portfolio" ]
+      }
+    }
+  },
+  "servers" : [ {
+    "description" : "Same origin",
+    "url" : "/"
+  } ],
+  "tags" : [ {
+    "description" : "Gains, annualised returns and the curve behind them",
+    "name" : "Performance"
+  }, {
+    "description" : "Consolidated wealth across every envelope",
+    "name" : "Portfolio"
+  }, {
+    "description" : "A single envelope and the movements recorded on it",
+    "name" : "Accounts"
+  } ]
+}

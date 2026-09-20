@@ -13,6 +13,8 @@ import java.util.UUID;
 /**
  * One envelope, its holdings marked to market, and what may still legally be paid into it.
  *
+ * @param paymentCeiling the regulatory cap on payments into this envelope, null when there is none;
+ *     with {@code remainingAllowance} it is what a screen needs to show how much of it is used
  * @param remainingAllowance null when the envelope has no ceiling at all, which is emphatically not
  *     the same as no room left. A PEA that has used its 150 000 EUR and a compte-titres that never
  *     had a limit must not render identically, so the absence stays null instead of becoming zero.
@@ -27,6 +29,7 @@ public record AccountDetailResponse(
         LocalDate openedOn,
         MoneyResponse cashBalance,
         MoneyResponse totalValue,
+        @Schema(nullable = true) MoneyResponse paymentCeiling,
         @Schema(nullable = true) MoneyResponse remainingAllowance,
         List<PositionResponse> positions,
         boolean stale,
@@ -47,6 +50,7 @@ public record AccountDetailResponse(
                 detail.openedOn(),
                 MoneyResponse.of(detail.cashBalance()),
                 MoneyResponse.of(detail.totalValue()),
+                detail.type().ceiling().map(MoneyResponse::of).orElse(null),
                 detail.remainingAllowance().map(MoneyResponse::of).orElse(null),
                 detail.positions().stream().map(PositionResponse::from).toList(),
                 detail.stale(),

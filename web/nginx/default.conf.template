@@ -1,0 +1,58 @@
+# Rendered at container start: ${API_UPSTREAM} comes from the environment. nginx's own variables
+# ($host, $uri...) are left alone, because only defined environment variables are substituted.
+
+# One id per request, end to end: a caller's X-Correlation-Id is passed on, otherwise nginx's own
+# request id is used. The API validates it, logs it and returns it, and nginx logs it too, so a
+# request can be followed from the proxy to the application logs with a single search.
+map $http_x_correlation_id $correlation_id {
+    default $http_x_correlation_id;
+    ""      $request_id;
+}
+
+log_format patrimoine '$remote_addr "$request" $status $body_bytes_sent '
+                      '${request_time}s correlation=$correlation_id';
+
+server {
+    listen 8080;
+    server_name _;
+    server_tokens off;
+    root /usr/share/nginx/html;
+    access_log /dev/stdout patrimoine;
+
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+
+    # For the orchestrator's probes: says nginx is serving, nothing more.
+    location = /healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    # The browser only ever talks to this origin, so the API needs no CORS configuration at all.
+    location /api/ {
+        proxy_pass ${API_UPSTREAM};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Correlation-Id $correlation_id;
+        proxy_read_timeout 15s;
+    }
+
+    # Bundled files have a content hash in their name: a new release has new names, so these can
+    # be cached for a year without ever serving an outdated one.
+    location /assets/ {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        try_files $uri =404;
+    }
+
+    # Everything else is the single-page application. index.html is never cached, since it is what
+    # points to the current assets; unknown paths get it too, and the router decides what to show.
+    location / {
+        include /etc/nginx/snippets/security-headers.conf;
+        add_header Cache-Control "no-cache" always;
+        try_files $uri /index.html;
+    }
+}

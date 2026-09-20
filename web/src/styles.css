@@ -1,0 +1,717 @@
+/*
+ * Colours are roles, not values. Every hex comes from the validated reference palette: the series
+ * blue passed the colour checks on both surfaces, and text only ever uses the ink tokens, which
+ * clear WCAG AA. Dark mode is its own set of steps from the same ramps, not an inversion.
+ */
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-secondary: #52514e;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.1);
+  --hover: rgba(11, 11, 11, 0.04);
+  --link: #1c5cab;
+  --series-1: #2a78d6;
+  --series-1-wash: rgba(42, 120, 214, 0.1);
+  --meter-fill: #2a78d6;
+  --meter-track: #b7d3f6;
+  /* Status: fixed, never used for a series, always beside an icon and a label. */
+  --good: #0ca30c;
+  --warning: #fab219;
+  --critical: #d03b3b;
+
+  --radius: 8px;
+  --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --ink: #ffffff;
+    --ink-secondary: #c3c2b7;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255, 255, 255, 0.1);
+    --hover: rgba(255, 255, 255, 0.06);
+    --link: #86b6ef;
+    --series-1: #3987e5;
+    --series-1-wash: rgba(57, 135, 229, 0.12);
+    --meter-fill: #3987e5;
+    --meter-track: #104281;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font: 16px/1.5 var(--font);
+}
+
+a {
+  color: var(--link);
+}
+
+:focus-visible {
+  outline: 2px solid var(--series-1);
+  outline-offset: 2px;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.2;
+  margin: 0;
+}
+
+h2 {
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -3rem;
+  background: var(--surface);
+  padding: 0.5rem 1rem;
+  z-index: 10;
+}
+
+.skip-link:focus {
+  top: 1rem;
+}
+
+.container {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding-inline: 1rem;
+}
+
+.app-header {
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.app-header .container {
+  display: flex;
+  align-items: center;
+  min-height: 3.5rem;
+}
+
+.brand {
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+main.container {
+  padding-block: 2rem 4rem;
+  display: grid;
+  gap: 2rem;
+}
+
+/* Grid items default to their content's minimum width, so a wide table would stretch the whole
+   page on a phone. Letting them shrink keeps the overflow inside the table's own scroll area. */
+main.container > * {
+  min-width: 0;
+}
+
+.secondary {
+  color: var(--ink-secondary);
+}
+
+.page-head {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--ink-secondary);
+}
+
+.page-head p {
+  margin: 0;
+}
+
+/* The one number the dashboard leads with: large, same sans, proportional figures. */
+.hero {
+  font-size: clamp(2.5rem, 7vw, 3.5rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  min-width: 0;
+}
+
+.grid-2 {
+  display: grid;
+  gap: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 28rem), 1fr));
+  align-items: start;
+}
+
+/* ---------------------------------------------------------------------------- notices */
+
+.notice {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 0.75rem 1rem;
+}
+
+.notice p,
+.notice ul {
+  margin: 0;
+}
+
+.notice-title {
+  font-weight: 600;
+}
+
+.status-icon {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.status-icon .warning-fill {
+  fill: var(--warning);
+}
+
+/* The glyph stays ink on the yellow: the icon keeps its contrast even where the yellow alone
+   would not. */
+.status-icon .warning-glyph {
+  fill: #0b0b0b;
+}
+
+.error-panel {
+  border: 1px solid var(--critical);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+}
+
+.error-panel p,
+.error-panel ul {
+  margin: 0.25rem 0 0;
+}
+
+.error-title {
+  font-weight: 600;
+}
+
+.success {
+  margin: 0.75rem 0 0;
+}
+
+.loading {
+  color: var(--ink-secondary);
+}
+
+/* ------------------------------------------------------------------------------- tiles */
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 1rem;
+  margin: 0;
+}
+
+.tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+
+.tile dt {
+  font-size: 0.875rem;
+  color: var(--ink-secondary);
+}
+
+.tile dd {
+  margin: 0;
+}
+
+.tile-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.tile-note {
+  font-size: 0.875rem;
+  color: var(--ink-secondary);
+}
+
+/* Gains and losses: text in ink with its sign, direction also shown by a status-coloured arrow. */
+.signed {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+}
+
+.signed-icon {
+  width: 0.7em;
+  height: 0.7em;
+  flex: none;
+}
+
+.signed-icon.up {
+  fill: var(--good);
+}
+
+.signed-icon.down {
+  fill: var(--critical);
+}
+
+/* ------------------------------------------------------------------------------ tables */
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+caption {
+  text-align: left;
+  font-weight: 600;
+  font-size: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+th,
+td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--grid);
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  font-weight: 500;
+  color: var(--ink-secondary);
+  white-space: nowrap;
+}
+
+/* Columns of numbers align, so they get equal-width digits. */
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Secondary columns give way on a phone, so the figures stay visible without scrolling. */
+@media (max-width: 36rem) {
+  .hide-narrow {
+    display: none;
+  }
+}
+
+tbody tr:hover {
+  background: var(--hover);
+}
+
+/* A family of accounts opens its row group: its name and subtotal, in ink, on a faint band. */
+.group-row th,
+.group-row td {
+  color: var(--ink);
+  font-weight: 600;
+  background: var(--hover);
+  padding-top: 0.75rem;
+}
+
+tbody + tbody .group-row th,
+tbody + tbody .group-row td {
+  border-top: 1px solid var(--axis);
+}
+
+tbody .group-row:hover {
+  background: none;
+}
+
+/* ------------------------------------------------------------------------------ charts */
+
+.chart {
+  margin: 0;
+  min-width: 0;
+}
+
+.chart figcaption {
+  font-weight: 600;
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.chart-frame {
+  position: relative;
+  transition: opacity 150ms;
+}
+
+/* A refetch keeps the previous curve, dimmed, instead of flashing an empty frame. */
+.chart-frame.dimmed {
+  opacity: 0.5;
+}
+
+.chart svg {
+  display: block;
+  width: 100%;
+  overflow: visible;
+  touch-action: pan-y;
+}
+
+.chart svg:focus-visible {
+  outline-offset: 4px;
+}
+
+.gridline {
+  stroke: var(--grid);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+.baseline {
+  stroke: var(--axis);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+.tick {
+  fill: var(--ink-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.series-line {
+  fill: none;
+  stroke: var(--series-1);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.series-area {
+  fill: var(--series-1-wash);
+}
+
+/* Markers wear a ring in the surface colour, so they stay legible where they cross the line. */
+.series-dot {
+  fill: var(--series-1);
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+
+.crosshair {
+  stroke: var(--axis);
+  stroke-width: 1;
+}
+
+.end-label {
+  fill: var(--ink-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tooltip {
+  position: absolute;
+  pointer-events: none;
+  transform: translateX(-50%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  padding: 0.375rem 0.625rem;
+  display: grid;
+  white-space: nowrap;
+  z-index: 1;
+}
+
+/* Values lead, labels follow. */
+.tooltip strong {
+  font-size: 0.9375rem;
+}
+
+.tooltip span {
+  font-size: 0.8125rem;
+  color: var(--ink-secondary);
+}
+
+.tooltip-key {
+  display: inline-block;
+  width: 12px;
+  height: 2px;
+  background: var(--series-1);
+  vertical-align: middle;
+  margin-right: 0.375rem;
+}
+
+.chart-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  padding: 0.25rem 0;
+  color: var(--link);
+  font: inherit;
+  font-size: 0.875rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.empty {
+  color: var(--ink-secondary);
+  margin: 0;
+}
+
+/* Allocation: one bar per envelope, all in the series blue, value at the tip. */
+.bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+/* Families of envelopes, each headed by its subtotal. */
+.bar-groups {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.bar-group-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 0 0.5rem;
+  padding: 0 0.25rem 0.25rem;
+  border-bottom: 1px solid var(--grid);
+  font-weight: 600;
+}
+
+/* The envelope's name sits above its bar, so long French names never squeeze the bars. */
+.bar-row {
+  position: relative;
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.125rem 0.25rem;
+  border-radius: 4px;
+}
+
+.bar-row:hover,
+.bar-row:focus-visible {
+  background: var(--hover);
+}
+
+.bar-label {
+  font-size: 0.875rem;
+}
+
+.bar-track {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+/* At most 24px thick, rounded at the data end only, square on the baseline. */
+.bar {
+  height: 16px;
+  min-width: 2px;
+  background: var(--series-1);
+  border-radius: 0 4px 4px 0;
+  flex: none;
+}
+
+.bar-value {
+  font-size: 0.875rem;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.bar-row .tooltip {
+  display: none;
+  left: 50%;
+  bottom: calc(100% + 4px);
+}
+
+.bar-row:hover .tooltip,
+.bar-row:focus-visible .tooltip {
+  display: grid;
+}
+
+/* Allowance meter: filled and unfilled parts are two steps of the same ramp. */
+.meter-block {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.meter-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-weight: 600;
+}
+
+.meter {
+  height: 12px;
+  border-radius: 6px;
+  background: var(--meter-track);
+  overflow: hidden;
+}
+
+.meter-fill {
+  height: 100%;
+  background: var(--meter-fill);
+}
+
+.meter-caption {
+  margin: 0;
+  color: var(--ink-secondary);
+  font-size: 0.9375rem;
+}
+
+/* ------------------------------------------------------------------------------- forms */
+
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 2px;
+  margin: 0;
+  gap: 2px;
+}
+
+.segmented legend {
+  padding: 0;
+}
+
+.segmented label {
+  position: relative;
+}
+
+.segmented input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.segmented span {
+  display: block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.segmented input:checked + span {
+  background: var(--ink);
+  color: var(--surface);
+  font-weight: 600;
+}
+
+.segmented input:focus-visible + span {
+  outline: 2px solid var(--series-1);
+  outline-offset: 1px;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.movement-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+}
+
+.field {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--ink-secondary);
+}
+
+.field input {
+  font: inherit;
+  font-size: 1rem;
+  color: var(--ink);
+  background: var(--page);
+  border: 1px solid var(--axis);
+  border-radius: 6px;
+  padding: 0.375rem 0.625rem;
+  min-width: 10rem;
+}
+
+.primary-button {
+  font: inherit;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  background: var(--ink);
+  color: var(--surface);
+  cursor: pointer;
+}
+
+.primary-button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.section-note {
+  margin: 0.75rem 0 1.5rem;
+  font-size: 0.875rem;
+  color: var(--ink-secondary);
+}
+
+@media (forced-colors: active) {
+  .bar,
+  .meter-fill {
+    background: CanvasText;
+  }
+}

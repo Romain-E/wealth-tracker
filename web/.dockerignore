@@ -1,0 +1,8 @@
+# The image installs and builds on its own; nothing produced on the host goes in.
+node_modules/
+dist/
+coverage/
+src/api/generated.ts
+Dockerfile
+.dockerignore
+*.log

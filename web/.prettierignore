@@ -1,0 +1,7 @@
+dist
+coverage
+node_modules
+package-lock.json
+# Generated from the backend: its layout is the backend's, and it is checked there.
+openapi.json
+src/api/generated.ts

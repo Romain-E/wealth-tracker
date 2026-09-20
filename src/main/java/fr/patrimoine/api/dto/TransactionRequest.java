@@ -8,6 +8,7 @@ import fr.patrimoine.domain.model.InstrumentId;
 import fr.patrimoine.domain.model.InstrumentKind;
 import fr.patrimoine.domain.model.Money;
 import fr.patrimoine.domain.model.Quantity;
+import io.swagger.v3.oas.annotations.media.DiscriminatorMapping;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Digits;
@@ -37,9 +38,25 @@ import java.time.LocalDate;
     @JsonSubTypes.Type(value = TransactionRequest.Purchase.class, name = "BUY"),
     @JsonSubTypes.Type(value = TransactionRequest.Sale.class, name = "SELL")
 })
+// The mapping is spelled out so the published contract says what the JSON says: "DEPOSIT", not the
+// schema's Java-derived name. A generated client narrows the union on exactly these values.
 @Schema(
         description = "A movement to record; the type field selects the shape",
-        discriminatorProperty = "type")
+        discriminatorProperty = "type",
+        discriminatorMapping = {
+            @DiscriminatorMapping(value = "DEPOSIT", schema = TransactionRequest.Deposit.class),
+            @DiscriminatorMapping(
+                    value = "WITHDRAWAL",
+                    schema = TransactionRequest.Withdrawal.class),
+            @DiscriminatorMapping(value = "BUY", schema = TransactionRequest.Purchase.class),
+            @DiscriminatorMapping(value = "SELL", schema = TransactionRequest.Sale.class)
+        },
+        oneOf = {
+            TransactionRequest.Deposit.class,
+            TransactionRequest.Withdrawal.class,
+            TransactionRequest.Purchase.class,
+            TransactionRequest.Sale.class
+        })
 public sealed interface TransactionRequest {
 
     TransactionCommand toCommand(AccountId accountId);

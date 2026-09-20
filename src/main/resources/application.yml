@@ -44,6 +44,8 @@ spring:
     locations: classpath:db/migration
 
 springdoc:
+  # Successful responses are JSON; errors are declared as problem+json by OpenApiConfiguration.
+  default-produces-media-type: application/json
   api-docs:
     path: /v3/api-docs
   swagger-ui:

@@ -48,7 +48,11 @@ class AccountController {
 
     @GetMapping("/{accountId}")
     @Operation(summary = "One account, its positions marked to market, its remaining allowance")
-    @ApiResponse(responseCode = "404", description = "No such account")
+    // Declared in full: once any response is listed, springdoc no longer adds the 200 by itself.
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "The account"),
+        @ApiResponse(responseCode = "404", description = "No such account")
+    })
     AccountDetailResponse detail(@PathVariable UUID accountId) {
         return AccountDetailResponse.from(accountDetail.detail(new AccountId(accountId)));
     }
@@ -92,7 +96,11 @@ class AccountController {
             description =
                     "For envelopes with no market price: property, or a life-insurance contract"
                             + " valued by the insurer's statement. Idempotent per day.")
-    @ApiResponse(responseCode = "404", description = "No such account")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "The valuation, as now recorded"),
+        @ApiResponse(responseCode = "400", description = "Malformed body"),
+        @ApiResponse(responseCode = "404", description = "No such account")
+    })
     ValuationResponse valuation(
             @PathVariable UUID accountId,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
