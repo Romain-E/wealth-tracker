@@ -7,6 +7,7 @@ import fr.patrimoine.application.port.out.ValuationRepository;
 import fr.patrimoine.domain.model.Account;
 import fr.patrimoine.domain.model.AccountId;
 import fr.patrimoine.domain.model.InstrumentId;
+import fr.patrimoine.domain.model.InstrumentKind;
 import fr.patrimoine.domain.model.Position;
 import fr.patrimoine.domain.model.Quote;
 import fr.patrimoine.domain.model.Transaction;
@@ -18,7 +19,6 @@ import java.time.Month;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
@@ -66,11 +66,14 @@ public class ValuationContextAssembler {
     }
 
     private Map<InstrumentId, Quote> quotesFor(Collection<Account> accounts) {
-        Set<InstrumentId> held =
+        Map<InstrumentId, InstrumentKind> held =
                 accounts.stream()
                         .flatMap(account -> account.positions().stream())
-                        .map(Position::instrument)
-                        .collect(Collectors.toSet());
+                        .collect(
+                                Collectors.toMap(
+                                        Position::instrument,
+                                        Position::kind,
+                                        (first, second) -> first));
         return held.isEmpty() ? Map.of() : quotes.findLatest(held);
     }
 

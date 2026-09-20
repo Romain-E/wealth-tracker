@@ -3,6 +3,7 @@ package fr.patrimoine.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.when;
 
 import fr.patrimoine.application.error.ResourceNotFoundException;
@@ -91,7 +92,7 @@ class PortfolioQueryServiceTest {
             Account account = pea();
             when(accounts.findAll()).thenReturn(List.of(account));
             when(rates.currentRates()).thenReturn(Map.of());
-            when(quotes.findLatest(anyCollection()))
+            when(quotes.findLatest(anyMap()))
                     .thenReturn(Map.of(WORLD, Quote.fresh(WORLD, Price.euros("125.00"), FIXED)));
 
             PortfolioValuation overview = service.overview();
@@ -130,7 +131,7 @@ class PortfolioQueryServiceTest {
             Account account = pea();
             when(accounts.findAll()).thenReturn(List.of(account));
             when(rates.currentRates()).thenReturn(Map.of());
-            when(quotes.findLatest(anyCollection()))
+            when(quotes.findLatest(anyMap()))
                     .thenReturn(
                             Map.of(
                                     WORLD,
@@ -175,7 +176,7 @@ class PortfolioQueryServiceTest {
             Account account = pea();
             when(accounts.findById(account.id())).thenReturn(Optional.of(account));
             when(rates.currentRates()).thenReturn(Map.of());
-            when(quotes.findLatest(anyCollection()))
+            when(quotes.findLatest(anyMap()))
                     .thenReturn(Map.of(WORLD, Quote.fresh(WORLD, Price.euros("125.00"), FIXED)));
 
             AccountDetail detail = service.detail(account.id());
@@ -206,7 +207,7 @@ class PortfolioQueryServiceTest {
             Account pea = pea();
             when(accounts.findById(pea.id())).thenReturn(Optional.of(pea));
             when(rates.currentRates()).thenReturn(Map.of());
-            when(quotes.findLatest(anyCollection())).thenReturn(Map.of());
+            when(quotes.findLatest(anyMap())).thenReturn(Map.of());
 
             // 150 000 ceiling less the 30 000 paid in.
             assertThat(service.detail(pea.id()).remainingAllowance())
@@ -236,7 +237,7 @@ class PortfolioQueryServiceTest {
             Account account = pea();
             when(accounts.findById(account.id())).thenReturn(Optional.of(account));
             when(rates.currentRates()).thenReturn(Map.of());
-            when(quotes.findLatest(anyCollection())).thenReturn(Map.of());
+            when(quotes.findLatest(anyMap())).thenReturn(Map.of());
 
             AccountDetail detail = service.detail(account.id());
 
@@ -258,14 +259,14 @@ class PortfolioQueryServiceTest {
             Account account = pea();
             when(accounts.findById(account.id())).thenReturn(Optional.of(account));
             when(rates.currentRates()).thenReturn(Map.of());
-            when(quotes.findLatest(anyCollection())).thenReturn(Map.of());
+            when(quotes.findLatest(anyMap())).thenReturn(Map.of());
 
             service.detail(account.id());
 
-            org.mockito.ArgumentCaptor<java.util.Collection<InstrumentId>> requested =
-                    org.mockito.ArgumentCaptor.captor();
+            org.mockito.ArgumentCaptor<Map<InstrumentId, fr.patrimoine.domain.model.InstrumentKind>>
+                    requested = org.mockito.ArgumentCaptor.captor();
             org.mockito.Mockito.verify(quotes).findLatest(requested.capture());
-            assertThat(requested.getValue()).containsExactly(WORLD).doesNotContain(TOTAL);
+            assertThat(requested.getValue()).containsOnlyKeys(WORLD).doesNotContainKey(TOTAL);
         }
 
         @Test

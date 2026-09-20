@@ -21,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 
 /**
  * The demo seed is hand-written SQL, so it bypasses every rule the aggregate enforces. This test
@@ -33,6 +34,8 @@ import org.springframework.test.context.ActiveProfiles;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("demo")
+// Prices come from the seed: a test must not depend on a website being up.
+@TestPropertySource(properties = "patrimoine.quotes.live-prices=false")
 @Import(PostgresContainerConfiguration.class)
 @DisplayName("Demo seed")
 class DemoSeedIT {

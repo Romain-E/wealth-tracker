@@ -3,6 +3,7 @@ package fr.patrimoine.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -61,13 +62,14 @@ class ValuationContextAssemblerTest {
         pea.deposit(Money.euros("10000.00"));
         pea.buy(WORLD, InstrumentKind.ETF, Quantity.of(10), Price.euros("100.00"), Money.ZERO_EUR);
         when(rates.currentRates()).thenReturn(Map.of());
-        when(quotes.findLatest(anyCollection())).thenReturn(Map.of());
+        when(quotes.findLatest(anyMap())).thenReturn(Map.of());
 
         assembler().assemble(List.of(pea), ASOF);
 
-        ArgumentCaptor<Collection<InstrumentId>> requested = ArgumentCaptor.captor();
+        ArgumentCaptor<Map<InstrumentId, InstrumentKind>> requested = ArgumentCaptor.captor();
         verify(quotes).findLatest(requested.capture());
-        assertThat(requested.getValue()).containsExactly(WORLD);
+        // The kind travels with the id: it is what routes the lookup to the right source.
+        assertThat(requested.getValue()).containsExactly(Map.entry(WORLD, InstrumentKind.ETF));
     }
 
     @Test
@@ -143,6 +145,6 @@ class ValuationContextAssemblerTest {
         ValuationContext context = assembler().assemble(List.of(livretA), ASOF);
 
         assertThat(context.rateFor(AccountType.LIVRET_A)).contains(Percentage.ofPoints("1.7000"));
-        verify(quotes, never()).findLatest(anyCollection());
+        verify(quotes, never()).findLatest(anyMap());
     }
 }

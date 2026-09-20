@@ -19,6 +19,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 
 /**
  * The API over real HTTP, against the seeded database: controllers, validation, error mapping,
@@ -29,6 +30,8 @@ import org.springframework.test.context.ActiveProfiles;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("demo")
+// Prices come from the seed: a test must not depend on a website being up.
+@TestPropertySource(properties = "patrimoine.quotes.live-prices=false")
 @Import(PostgresContainerConfiguration.class)
 @DisplayName("The API end to end")
 class ApiIT {

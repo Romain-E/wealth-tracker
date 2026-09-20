@@ -24,6 +24,7 @@ import org.springframework.context.annotation.Import;
     JpaAccountRepository.class,
     JpaTransactionRepository.class,
     JdbcValuationRepository.class,
-    JdbcQuoteRepository.class
+    JdbcQuoteStore.class,
+    JdbcInstrumentSymbolStore.class
 })
 @interface PersistenceSlice {}

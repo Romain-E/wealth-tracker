@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.when;
 
 import fr.patrimoine.application.error.ResourceNotFoundException;
@@ -94,7 +95,7 @@ class PerformanceQueryServiceTest {
         Account pea = fundedPea();
         when(accounts.findAll()).thenReturn(List.of(pea));
         when(rates.currentRates()).thenReturn(Map.of());
-        when(quotes.findLatest(anyCollection()))
+        when(quotes.findLatest(anyMap()))
                 .thenReturn(Map.of(WORLD, Quote.fresh(WORLD, Price.euros("120.00"), FIXED)));
         when(transactions.findByAccounts(anyCollection()))
                 .thenReturn(
@@ -120,7 +121,7 @@ class PerformanceQueryServiceTest {
         Account pea = fundedPea();
         when(accounts.findAll()).thenReturn(List.of(pea));
         when(rates.currentRates()).thenReturn(Map.of());
-        when(quotes.findLatest(anyCollection()))
+        when(quotes.findLatest(anyMap()))
                 .thenReturn(Map.of(WORLD, Quote.fresh(WORLD, Price.euros("120.00"), FIXED)));
         when(transactions.findByAccounts(anyCollection())).thenReturn(Map.of());
         // A deliberately wrong, stale snapshot: if it leaked into the headline figure the
@@ -150,7 +151,7 @@ class PerformanceQueryServiceTest {
         AccountId flat = AccountId.newId();
         when(accounts.findAll()).thenReturn(List.of(pea));
         when(rates.currentRates()).thenReturn(Map.of());
-        when(quotes.findLatest(anyCollection())).thenReturn(Map.of());
+        when(quotes.findLatest(anyMap())).thenReturn(Map.of());
         when(transactions.findByAccounts(anyCollection())).thenReturn(Map.of());
         when(valuations.findAllBetween(FROM, TODAY))
                 .thenReturn(
@@ -189,7 +190,7 @@ class PerformanceQueryServiceTest {
         AccountId flat = AccountId.newId();
         when(accounts.findAll()).thenReturn(List.of(pea));
         when(rates.currentRates()).thenReturn(Map.of());
-        when(quotes.findLatest(anyCollection())).thenReturn(Map.of());
+        when(quotes.findLatest(anyMap())).thenReturn(Map.of());
         when(transactions.findByAccounts(anyCollection())).thenReturn(Map.of());
         when(valuations.latestByAccountBefore(FROM))
                 .thenReturn(
@@ -225,7 +226,7 @@ class PerformanceQueryServiceTest {
         Account pea = fundedPea();
         when(accounts.findById(pea.id())).thenReturn(Optional.of(pea));
         when(rates.currentRates()).thenReturn(Map.of());
-        when(quotes.findLatest(anyCollection()))
+        when(quotes.findLatest(anyMap()))
                 .thenReturn(Map.of(WORLD, Quote.fresh(WORLD, Price.euros("130.00"), FIXED)));
         when(transactions.findByAccount(pea.id()))
                 .thenReturn(List.of(deposit(pea.id(), "2020-01-01", "15000.00")));

@@ -25,6 +25,12 @@ spring:
     # Plain notation: a large portfolio total must not reach a client as 1.7E+5.
     generator:
       write-bigdecimal-as-plain: true
+  data:
+    redis:
+      # The quote cache is an optimisation. When Redis is down, a lookup should give up in
+      # milliseconds and fetch directly, not wait out the ten-second default first.
+      timeout: 500ms
+      connect-timeout: 500ms
   flyway:
     locations: classpath:db/migration
 
@@ -40,3 +46,59 @@ logging:
     # Every line of a request carries its correlation id, which is what makes a reported
     # error findable. Empty for work that belongs to no request, such as startup.
     level: "%5p [%X{correlationId:-}]"
+
+patrimoine:
+  quotes:
+    # Kill switch: false serves stored prices only, flagged stale, and calls no provider.
+    live-prices: true
+    currency: EUR
+    # Exchange feeds are delayed by about fifteen minutes anyway.
+    cache-ttl: 15m
+    # Shorter than the cache TTL, so held instruments stay cached. ISO-8601, read by @Scheduled.
+    refresh-interval: PT10M
+    refresh-initial-delay: PT30S
+    connect-timeout: 2s
+    read-timeout: 3s
+    coingecko:
+      base-url: https://api.coingecko.com/api/v3
+      # Optional. The public API answers without a key, at a lower rate limit.
+      api-key: ${COINGECKO_API_KEY:}
+    yahoo:
+      base-url: https://query1.finance.yahoo.com
+      user-agent: "Mozilla/5.0 (compatible; patrimoine-api)"
+      # Euro-area exchanges, in order of preference: Paris, Amsterdam, Xetra, Milan, Brussels, Madrid.
+      preferred-listing-suffixes: [".PA", ".AS", ".DE", ".MI", ".BR", ".MC"]
+
+# One breaker and one retry per provider, so an outage at Yahoo never stops crypto prices.
+# Only QuoteProviderException counts: a bug in this code is not an outage upstream.
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 4
+        failure-rate-threshold: 50
+        # While open, requests go straight to stored prices instead of waiting on a timeout.
+        wait-duration-in-open-state: 60s
+        permitted-number-of-calls-in-half-open-state: 1
+        record-exceptions:
+          - fr.patrimoine.infrastructure.quote.QuoteProviderException
+    instances:
+      coingecko:
+        base-config: default
+      yahoo:
+        base-config: default
+  retry:
+    configs:
+      default:
+        # One extra attempt absorbs a dropped connection; more would only lengthen an outage.
+        max-attempts: 2
+        wait-duration: 300ms
+        retry-exceptions:
+          - fr.patrimoine.infrastructure.quote.QuoteProviderException
+    instances:
+      coingecko:
+        base-config: default
+      yahoo:
+        base-config: default
