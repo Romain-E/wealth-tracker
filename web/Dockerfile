@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------------------------------
 # Build: type check, generate the API types from openapi.json, bundle.
 # ---------------------------------------------------------------------------------------------
-FROM node:22-alpine AS build
+FROM node:25-alpine AS build
 WORKDIR /web
 
 # Dependencies first, so a code change reuses this layer. --ignore-scripts: no package gets to run
