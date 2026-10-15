@@ -17,7 +17,7 @@ RUN npm run build
 # ---------------------------------------------------------------------------------------------
 # Runtime: static files behind nginx, as a non-root user on an unprivileged port.
 # ---------------------------------------------------------------------------------------------
-FROM nginxinc/nginx-unprivileged:1.29-alpine AS runtime
+FROM nginxinc/nginx-unprivileged:1.31-alpine AS runtime
 
 # Templates are rendered at start-up by the image's entrypoint, which substitutes API_UPSTREAM.
 COPY nginx/default.conf.template /etc/nginx/templates/default.conf.template
